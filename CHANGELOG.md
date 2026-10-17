@@ -20,8 +20,8 @@ fixed against real use after the initial 1.0.0 drop.
   InstantSpaceSwitcher synthetic‑swipe technique; private symbols resolved at runtime,
   activation held until the Space change is reported, in‑flight requests queued and
   re‑planned.
-- **Pass‑through settings**: ←/→ to the system, keys pressed with ⇧/⌥/⌃ to the front app,
-  and delivery of the right ⌘ modifier itself for apps that react to it.
+- **Pass‑through settings**: ←/→ and Space to the system, keys pressed with ⇧/⌥/⌃ to the
+  front app, and delivery of the right ⌘ modifier itself for apps that react to it.
 - Tabbed settings window (General / Matching / Appearance / Exclusions), sized per pane.
 
 ### Fixed

@@ -53,8 +53,8 @@ public enum KeyClassifier {
             return .previous
         case KeyCode.tab, KeyCode.space:
             // Space is deliberately not typable: ⌘Space is a system hotkey (Spotlight) and
-            // word-prefix matching makes it unnecessary. Tab is reserved (⌘Tab is the system
-            // app switcher).
+            // word-prefix matching makes it unnecessary; `Settings.passThroughSpace` lets it
+            // reach the system instead. Tab is reserved (⌘Tab is the system app switcher).
             return .ignored
         default:
             break
@@ -84,6 +84,9 @@ public enum KeyPassThrough {
     public static func passes(keyCode: Int64, flags: ModifierFlags, settings: Settings) -> Bool {
         if settings.passThroughLeftRightArrows,
            keyCode == KeyCode.leftArrow || keyCode == KeyCode.rightArrow {
+            return true
+        }
+        if settings.passThroughSpace, keyCode == KeyCode.space {
             return true
         }
         if settings.passThroughModifiedKeys, hasExtraModifier(flags) {

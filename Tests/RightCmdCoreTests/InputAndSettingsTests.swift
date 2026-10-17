@@ -45,6 +45,7 @@ final class KeyPassThroughTests: XCTestCase {
         let settings = Settings()
         XCTAssertFalse(KeyPassThrough.passes(keyCode: KeyCode.leftArrow, flags: rightCmd, settings: settings))
         XCTAssertFalse(KeyPassThrough.passes(keyCode: KeyCode.rightArrow, flags: rightCmd, settings: settings))
+        XCTAssertFalse(KeyPassThrough.passes(keyCode: KeyCode.space, flags: rightCmd, settings: settings))
         XCTAssertFalse(KeyPassThrough.passes(keyCode: keyP, flags: rightCmd.union([.shift, .leftShiftDevice]), settings: settings))
     }
 
@@ -69,6 +70,15 @@ final class KeyPassThroughTests: XCTestCase {
         XCTAssertFalse(KeyPassThrough.passes(keyCode: keyP, flags: rightCmd, settings: settings), "right ⌘ alone is still ours")
         XCTAssertFalse(KeyPassThrough.passes(keyCode: keyP, flags: rightCmd.union([.capsLock]), settings: settings), "Caps Lock is not a shortcut modifier")
         XCTAssertFalse(KeyPassThrough.passes(keyCode: KeyCode.leftArrow, flags: rightCmd, settings: settings), "arrows need their own setting")
+    }
+
+    func testSpacePassesWhenThatSettingIsOn() {
+        var settings = Settings()
+        settings.passThroughSpace = true
+        XCTAssertTrue(KeyPassThrough.passes(keyCode: KeyCode.space, flags: rightCmd, settings: settings), "⌘Space")
+        XCTAssertFalse(KeyPassThrough.passes(keyCode: KeyCode.tab, flags: rightCmd, settings: settings), "Tab stays swallowed")
+        XCTAssertFalse(KeyPassThrough.passes(keyCode: KeyCode.leftArrow, flags: rightCmd, settings: settings), "arrows need their own setting")
+        XCTAssertFalse(KeyPassThrough.passes(keyCode: 1, flags: rightCmd, settings: settings), "letters are still ours")
     }
 
     func testSettingsAreIndependent() {
@@ -221,6 +231,7 @@ final class SettingsTests: XCTestCase {
         XCTAssertFalse(s.movePointerToWindow)
         XCTAssertFalse(s.instantSpaceSwitching)
         XCTAssertFalse(s.passThroughLeftRightArrows)
+        XCTAssertFalse(s.passThroughSpace)
         XCTAssertFalse(s.passThroughModifiedKeys)
         XCTAssertFalse(s.passThroughActivatorModifier)
         XCTAssertTrue(s.showOverlay)
@@ -271,6 +282,7 @@ final class SettingsTests: XCTestCase {
         s.movePointerToWindow = true
         s.instantSpaceSwitching = true
         s.passThroughLeftRightArrows = true
+        s.passThroughSpace = true
         s.passThroughModifiedKeys = true
         s.passThroughActivatorModifier = true
         s.tintMenuBarIcon = false

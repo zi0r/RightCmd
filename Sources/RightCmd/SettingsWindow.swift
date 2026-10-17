@@ -175,6 +175,8 @@ struct GeneralPane: View {
                 Hint("Happens once per hold, as soon as the switch is settled; not if the pointer is already in that window, and not after Escape.")
                 Toggle("Let ← and → reach the system", isOn: $model.settings.passThroughLeftRightArrows)
                 Hint("For ⌘← / ⌘→ Space shortcuts bound in System Settings › Keyboard › Shortcuts › Mission Control. ↑ and ↓ still cycle between matches.")
+                Toggle("Let Space reach the system", isOn: $model.settings.passThroughSpace)
+                Hint("For ⌘Space launchers such as Spotlight, Raycast or Alfred.")
                 Toggle("Pass through keys pressed with Shift, Option or Control", isOn: $model.settings.passThroughModifiedKeys)
                 Hint("Lets shortcuts like ⌘⇧P reach the front app while right ⌘ is held. With this on, type app names with right ⌘ alone (Shift is no longer ignored).")
                 Toggle("Let apps see right ⌘ itself", isOn: $model.settings.passThroughActivatorModifier)

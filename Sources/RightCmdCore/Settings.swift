@@ -36,6 +36,9 @@ public struct Settings: Codable, Equatable, Sendable {
     /// Let ← and → pass through to the system while right ⌘ is held, for people who bind
     /// ⌘← / ⌘→ to Mission Control's "move left/right a Space". ↑ and ↓ keep cycling matches.
     public var passThroughLeftRightArrows: Bool = false
+    /// Let Space pass through to the system while right ⌘ is held, so ⌘Space launchers
+    /// (Spotlight, Raycast, Alfred) can be bound to the right key as well.
+    public var passThroughSpace: Bool = false
     /// Let any key pressed together with Shift, Option, Control or the left ⌘ pass through
     /// to the frontmost app while right ⌘ is held, so shortcuts such as ⌘⇧P keep working.
     /// While on, app names must be typed with right ⌘ alone.
@@ -93,7 +96,7 @@ public struct Settings: Codable, Equatable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case switchMode, matchWordPrefixes, matchInitials, skipFrontmostApp
         case commitOnUniqueMatch, movePointerToWindow, instantSpaceSwitching
-        case passThroughLeftRightArrows, passThroughModifiedKeys, passThroughActivatorModifier
+        case passThroughLeftRightArrows, passThroughSpace, passThroughModifiedKeys, passThroughActivatorModifier
         case showOverlay, overlayPosition, tintMenuBarIcon, iconColors
         case excludedPatterns, includeFinder, priorityPatterns
     }
@@ -109,6 +112,7 @@ public struct Settings: Codable, Equatable, Sendable {
         movePointerToWindow = (try? c.decodeIfPresent(Bool.self, forKey: .movePointerToWindow)) ?? defaults.movePointerToWindow
         instantSpaceSwitching = (try? c.decodeIfPresent(Bool.self, forKey: .instantSpaceSwitching)) ?? defaults.instantSpaceSwitching
         passThroughLeftRightArrows = (try? c.decodeIfPresent(Bool.self, forKey: .passThroughLeftRightArrows)) ?? defaults.passThroughLeftRightArrows
+        passThroughSpace = (try? c.decodeIfPresent(Bool.self, forKey: .passThroughSpace)) ?? defaults.passThroughSpace
         passThroughModifiedKeys = (try? c.decodeIfPresent(Bool.self, forKey: .passThroughModifiedKeys)) ?? defaults.passThroughModifiedKeys
         passThroughActivatorModifier = (try? c.decodeIfPresent(Bool.self, forKey: .passThroughActivatorModifier)) ?? defaults.passThroughActivatorModifier
         showOverlay = (try? c.decodeIfPresent(Bool.self, forKey: .showOverlay)) ?? defaults.showOverlay
@@ -130,6 +134,7 @@ public struct Settings: Codable, Equatable, Sendable {
         try c.encode(movePointerToWindow, forKey: .movePointerToWindow)
         try c.encode(instantSpaceSwitching, forKey: .instantSpaceSwitching)
         try c.encode(passThroughLeftRightArrows, forKey: .passThroughLeftRightArrows)
+        try c.encode(passThroughSpace, forKey: .passThroughSpace)
         try c.encode(passThroughModifiedKeys, forKey: .passThroughModifiedKeys)
         try c.encode(passThroughActivatorModifier, forKey: .passThroughActivatorModifier)
         try c.encode(showOverlay, forKey: .showOverlay)

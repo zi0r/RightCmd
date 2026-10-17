@@ -49,6 +49,7 @@ macOS will ask for **Accessibility** permission. RightCmd needs it to observe ke
 | ↓ / → | Select the next matching app |
 | ↑ / ← | Select the previous matching app |
 | ← / → | *(with "Let ← and → reach the system" on)* passed through untouched, e.g. for ⌘← / ⌘→ Space shortcuts; ↑ / ↓ still cycle |
+| Space | *(with "Let Space reach the system" on)* passed through untouched, for ⌘Space launchers |
 | ⇧ / ⌥ / ⌃ + key | *(with "Pass through keys pressed with Shift, Option or Control" on)* passed through untouched, e.g. ⌘⇧P for a private window |
 | ⎋ | Cancel (in "as you type" mode, returns to the app you came from) |
 | ↩ | Confirm and stop listening (right ⌘ can stay held) |
@@ -76,7 +77,7 @@ Within a tier results are alphabetical. Type more letters, or use the arrow keys
 
 **Priority apps** (Settings › Priority apps) let you put your own apps first. Anything on the list that matches what you typed outranks every other match, in list order — so with Slack at the top, `S` goes to Slack even though Safari sorts first alphabetically, and with Chrome listed, `C` prefers Chrome over an app whose *name* starts with "C". Priority never adds an app that doesn't match. Add apps from the running-app menu (stored by bundle id, so renames and localisation don't matter) or type a name/bundle‑id pattern; reorder with the arrows. Prioritised matches show a small pin in the overlay.
 
-**Settings** (menu bar › Settings…) are organised in four tabs: *General* (switch mode, commit on unique match, prefer another app, move the pointer, ←/→ and modified‑key pass‑through, modifier delivery, instant Space switching, launch at login, permission status), *Matching* (word‑prefix and initials matching, the priority list), *Appearance* (overlay, menu bar icon tint and colours), and *Exclusions* (Finder opt‑in, wildcard patterns such as `com.apple.*`).
+**Settings** (menu bar › Settings…) are organised in four tabs: *General* (switch mode, commit on unique match, prefer another app, move the pointer, ←/→, Space and modified‑key pass‑through, modifier delivery, instant Space switching, launch at login, permission status), *Matching* (word‑prefix and initials matching, the priority list), *Appearance* (overlay, menu bar icon tint and colours), and *Exclusions* (Finder opt‑in, wildcard patterns such as `com.apple.*`).
 
 ### Things to know
 
@@ -84,9 +85,9 @@ Within a tier results are alphabetical. Type more letters, or use the arrow keys
 - If the right ⌘ *release* is ever missed (the tap was disabled at that instant, a modal dialog was up, a remapper misbehaved), RightCmd notices within half a second by checking the live modifier state, or immediately on the next key press, and lets go. It can't leave your keyboard swallowed.
 - Revoking or re‑granting Accessibility, sleeping, or locking the screen is handled without a relaunch.
 
-- Right ⌘ becomes a dedicated switcher key: `right⌘ + C` no longer copies. Left ⌘ is untouched. Two opt‑in exceptions: *Let ← and → reach the system* passes those two keys through (down, up and auto‑repeat) so shortcuts such as Mission Control's "move left/right a Space" bound to ⌘← / ⌘→ keep working while right ⌘ is held; and *Pass through keys pressed with Shift, Option or Control* passes any key that has a second modifier down (or both ⌘ keys), so ⌘⇧P and friends reach the front app. In both cases the switcher session simply continues. Note that with the second one on, Shift is no longer ignored while typing app names — type with right ⌘ alone.
+- Right ⌘ becomes a dedicated switcher key: `right⌘ + C` no longer copies. Left ⌘ is untouched. Three opt‑in exceptions: *Let ← and → reach the system* passes those two keys through (down, up and auto‑repeat) so shortcuts such as Mission Control's "move left/right a Space" bound to ⌘← / ⌘→ keep working while right ⌘ is held; *Let Space reach the system* does the same for Space (⌘Space launchers); and *Pass through keys pressed with Shift, Option or Control* passes any key that has a second modifier down (or both ⌘ keys), so ⌘⇧P and friends reach the front app. In both cases the switcher session simply continues. Note that with the second one on, Shift is no longer ignored while typing app names — type with right ⌘ alone.
 - By design the right ⌘ *modifier* event itself is swallowed too, so apps see passed‑through keys with the ⌘ flag but never see ⌘ go down. That satisfies key‑equivalent matching (Firefox's ⌘⇧P works), but an app that reacts to the modifier being held — ⌘‑hover link underlining in terminals, temporary tool modes, menu alternates — needs the modifier delivered. *Let apps see right ⌘ itself* does that; leave it off unless something misbehaves, since a bare ⌘ press also fires "double‑tap ⌘" launchers. Press and release are always delivered as a pair, even if the setting changes mid‑hold.
-- Space and Tab are intentionally ignored while right ⌘ is held (⌘Space and ⌘Tab are system hotkeys). Word‑prefix matching means you never need a space anyway.
+- Space and Tab are intentionally ignored while right ⌘ is held (⌘Space and ⌘Tab are system hotkeys). Word‑prefix matching means you never need a space anyway. *Let Space reach the system* hands Space on instead, for ⌘Space launchers.
 - When a password field has focus, macOS enables *secure input* and no app can read keystrokes. The overlay tells you when this is the case.
 - Keyboard layouts are respected: letters are resolved through the active input source, not a fixed US table.
 
