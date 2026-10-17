@@ -114,36 +114,107 @@ final class SettingsModel: ObservableObject {
     }
 }
 
-struct SettingsView: View {
-    @ObservedObject var model: SettingsModel
-    @State private var exclusionsDraft: String = ""
+// MARK: - Panes
+
+/// Shared frame for every pane so the window width is constant and only the height changes
+/// between tabs. Panes are plain stacks (not a grouped `Form`, which is scroll-backed and
+/// has no intrinsic height), so each one reports its real size and nothing ever scrolls.
+private struct SettingsPane<Content: View>: View {
+    static var width: CGFloat { 540 }
+    @ViewBuilder let content: () -> Content
 
     var body: some View {
-        Form {
-            Section("Switching") {
-                Picker("Switch to the app", selection: $model.settings.switchMode) {
+        VStack(alignment: .leading, spacing: 16, content: content)
+            .padding(20)
+            .frame(width: Self.width, alignment: .topLeading)
+    }
+}
+
+/// A titled group whose content is left-aligned and fills the width.
+private struct SettingsGroup<Content: View>: View {
+    let title: String
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        GroupBox(title) {
+            VStack(alignment: .leading, spacing: 10, content: content)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(8)
+        }
+    }
+}
+
+private struct Hint: View {
+    let text: String
+    init(_ text: String) { self.text = text }
+    var body: some View {
+        Text(text)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+struct GeneralPane: View {
+    @ObservedObject var model: SettingsModel
+
+    var body: some View {
+        SettingsPane {
+            SettingsGroup(title: "Switching") {
+                Text("Switch to the app:")
+                Picker("", selection: $model.settings.switchMode) {
                     ForEach(SwitchMode.allCases, id: \.self) { mode in
                         Text(StatusMenuController.title(for: mode)).tag(mode)
                     }
                 }
                 .pickerStyle(.radioGroup)
+                .labelsHidden()
                 Toggle("Switch as soon as only one app matches", isOn: $model.settings.commitOnUniqueMatch)
                 Toggle("Prefer another app when the best match is already in front", isOn: $model.settings.skipFrontmostApp)
             }
 
-            Section("Matching") {
-                Toggle("Match the start of any word (“c” finds Google Chrome)", isOn: $model.settings.matchWordPrefixes)
-                Toggle("Match initials (“vsc” finds Visual Studio Code)", isOn: $model.settings.matchInitials)
+            SettingsGroup(title: "Startup") {
+                Toggle("Launch at login", isOn: $model.launchAtLogin)
+                    .disabled(!LaunchAtLogin.isSupported)
+                if !LaunchAtLogin.isSupported {
+                    Hint("Available when running from RightCmd.app.")
+                }
+                if let error = model.launchAtLoginError {
+                    Text(error).font(.caption).foregroundStyle(.red)
+                }
             }
 
-            Section {
-                if model.settings.priorityPatterns.isEmpty {
-                    Text("No priority apps. Matches are ordered by match quality, then name.")
-                        .foregroundStyle(.secondary)
+            SettingsGroup(title: "Permissions") {
+                HStack {
+                    Label(
+                        AccessibilityPermission.isTrusted() ? "Accessibility access granted" : "Accessibility access not granted",
+                        systemImage: AccessibilityPermission.isTrusted() ? "checkmark.circle.fill" : "exclamationmark.triangle.fill"
+                    )
+                    .foregroundStyle(AccessibilityPermission.isTrusted() ? Color.secondary : Color.orange)
+                    Spacer()
+                    Button("Open System Settings…") { AccessibilityPermission.openSystemSettings() }
                 }
-                ForEach(Array(model.settings.priorityPatterns.enumerated()), id: \.offset) { item in
-                    priorityRow(index: item.offset, pattern: item.element)
-                }
+                Hint("RightCmd needs Accessibility access to see the right ⌘ key and bring apps to the front.")
+            }
+        }
+    }
+}
+
+struct MatchingPane: View {
+    @ObservedObject var model: SettingsModel
+
+    var body: some View {
+        SettingsPane {
+            SettingsGroup(title: "Match the typed letters against") {
+                Toggle("The start of the app name (always on)", isOn: .constant(true))
+                    .disabled(true)
+                Toggle("The start of any later word (“c” finds Google Chrome)", isOn: $model.settings.matchWordPrefixes)
+                Toggle("Initials (“vsc” finds Visual Studio Code)", isOn: $model.settings.matchInitials)
+            }
+
+            SettingsGroup(title: "Priority apps") {
+                Hint("Apps on this list outrank every other match, top first. They still have to match what you type; priority only settles the order.")
+                priorityList
                 HStack {
                     Menu("Add Running App") {
                         ForEach(model.runningApps, id: \.id) { app in
@@ -157,90 +228,27 @@ struct SettingsView: View {
                     Button("Add") { model.addTypedPriority() }
                         .disabled(model.newPriorityPattern.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
-            } header: {
-                Text("Priority apps")
-            } footer: {
-                Text("Apps on this list outrank every other match, top first. They still have to match what you type; priority only settles the order. Patterns use the same syntax as exclusions.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
-
-            Section("Overlay") {
-                Toggle("Show overlay while typing", isOn: $model.settings.showOverlay)
-                Picker("Position", selection: $model.settings.overlayPosition) {
-                    Text("Center").tag(OverlayPosition.center)
-                    Text("Top").tag(OverlayPosition.top)
-                    Text("Bottom").tag(OverlayPosition.bottom)
-                }
-                .disabled(!model.settings.showOverlay)
-            }
-
-            Section {
-                Toggle("Tint the icon while right ⌘ is held", isOn: $model.settings.tintMenuBarIcon)
-                ColorPicker("Listening (nothing typed yet)", selection: model.iconColorBinding(\.listening), supportsOpacity: false)
-                ColorPicker("Match", selection: model.iconColorBinding(\.matched), supportsOpacity: false)
-                ColorPicker("No match", selection: model.iconColorBinding(\.noMatch), supportsOpacity: false)
-                HStack {
-                    Spacer()
-                    Button("Reset Colors") { model.settings.iconColors = .default }
-                        .disabled(model.settings.iconColors == .default)
-                }
-            } header: {
-                Text("Menu bar icon")
-            } footer: {
-                Text("The colour stays for a moment after you let go, so the result of a quick switch is still visible.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Section {
-                Toggle("Include Finder", isOn: $model.settings.includeFinder)
-                TextEditor(text: $exclusionsDraft)
-                    .font(.body.monospaced())
-                    .frame(minHeight: 80)
-                    .onChange(of: exclusionsDraft) { _, newValue in
-                        model.excludedPatternsText = newValue
-                    }
-            } header: {
-                Text("Excluded apps")
-            } footer: {
-                Text("Finder is left out unless included: it is always running and would otherwise claim “F”. Below, one pattern per line, matched against the app name or bundle identifier. “*” matches anything, e.g. com.apple.* or *Helper.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Section("General") {
-                Toggle("Launch at login", isOn: $model.launchAtLogin)
-                    .disabled(!LaunchAtLogin.isSupported)
-                if let error = model.launchAtLoginError {
-                    Text(error).font(.caption).foregroundStyle(.red)
-                }
-                HStack {
-                    Text(AccessibilityPermission.isTrusted() ? "Accessibility: granted" : "Accessibility: not granted")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Button("Open System Settings…") { AccessibilityPermission.openSystemSettings() }
-                }
-            }
-        }
-        .formStyle(.grouped)
-        // A grouped Form is scroll-backed and has no intrinsic height, so the window must be
-        // given one explicitly or it collapses to its title bar. Height is a minimum so the
-        // window can be resized taller; the form scrolls when shorter than its content.
-        .frame(width: SettingsWindowController.contentSize.width)
-        .frame(minHeight: SettingsWindowController.contentSize.height, maxHeight: .infinity)
-        .onAppear {
-            model.refresh()
-            exclusionsDraft = model.excludedPatternsText
         }
     }
-}
 
-extension SettingsView {
-    @ViewBuilder
-    fileprivate func priorityRow(index: Int, pattern: String) -> some View {
+    private var priorityList: some View {
+        List {
+            if model.settings.priorityPatterns.isEmpty {
+                Text("No priority apps yet.")
+                    .foregroundStyle(.secondary)
+            }
+            ForEach(Array(model.settings.priorityPatterns.enumerated()), id: \.offset) { item in
+                priorityRow(index: item.offset, pattern: item.element)
+            }
+        }
+        .listStyle(.bordered(alternatesRowBackgrounds: true))
+        .frame(height: 170)
+    }
+
+    private func priorityRow(index: Int, pattern: String) -> some View {
         let count = model.settings.priorityPatterns.count
-        HStack(spacing: 8) {
+        return HStack(spacing: 8) {
             Text("\(index + 1).")
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
@@ -262,13 +270,128 @@ extension SettingsView {
                 .help("Remove")
         }
         .buttonStyle(.borderless)
+        .padding(.vertical, 2)
+    }
+}
+
+struct AppearancePane: View {
+    @ObservedObject var model: SettingsModel
+
+    var body: some View {
+        SettingsPane {
+            SettingsGroup(title: "Overlay") {
+                Toggle("Show the overlay while typing", isOn: $model.settings.showOverlay)
+                HStack {
+                    Text("Position:")
+                    Picker("", selection: $model.settings.overlayPosition) {
+                        Text("Center").tag(OverlayPosition.center)
+                        Text("Top").tag(OverlayPosition.top)
+                        Text("Bottom").tag(OverlayPosition.bottom)
+                    }
+                    .labelsHidden()
+                    .fixedSize()
+                }
+                .disabled(!model.settings.showOverlay)
+            }
+
+            SettingsGroup(title: "Menu bar icon") {
+                Toggle("Tint the icon while right ⌘ is held", isOn: $model.settings.tintMenuBarIcon)
+                Hint("The colour stays for a moment after you let go, so the result of a quick switch is still visible.")
+                Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 8) {
+                    colorRow("Listening (nothing typed yet)", \.listening)
+                    colorRow("Match", \.matched)
+                    colorRow("No match", \.noMatch)
+                }
+                .disabled(!model.settings.tintMenuBarIcon)
+                HStack {
+                    Spacer()
+                    Button("Reset Colors") { model.settings.iconColors = .default }
+                        .disabled(model.settings.iconColors == .default)
+                }
+            }
+        }
+    }
+}
+
+extension AppearancePane {
+    /// Label in the first column, colour well in the second, so the wells line up.
+    fileprivate func colorRow(_ label: String, _ keyPath: WritableKeyPath<IconColors, SRGBColor>) -> some View {
+        GridRow {
+            Text(label)
+            ColorPicker("", selection: model.iconColorBinding(keyPath), supportsOpacity: false)
+                .labelsHidden()
+        }
+    }
+}
+
+struct ExclusionsPane: View {
+    @ObservedObject var model: SettingsModel
+    @State private var exclusionsDraft: String = ""
+
+    var body: some View {
+        SettingsPane {
+            SettingsGroup(title: "Built-in") {
+                Toggle("Include Finder", isOn: $model.settings.includeFinder)
+                Hint("Finder is left out unless included: it is always running and would otherwise claim “F”.")
+            }
+
+            SettingsGroup(title: "Excluded apps") {
+                TextEditor(text: $exclusionsDraft)
+                    .font(.body.monospaced())
+                    .frame(height: 140)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .strokeBorder(Color.secondary.opacity(0.3), lineWidth: 1)
+                    )
+                    .onChange(of: exclusionsDraft) { _, newValue in
+                        model.excludedPatternsText = newValue
+                    }
+                Hint("One pattern per line, matched against the app name or bundle identifier. “*” matches anything, e.g. com.apple.* or *Helper.")
+            }
+        }
+        .onAppear { exclusionsDraft = model.excludedPatternsText }
+    }
+}
+
+// MARK: - Window
+
+/// Toolbar-style tabs, with the window resized to fit each pane as it is selected.
+///
+/// `NSTabViewController` manages the toolbar for us but does not resize the window to the
+/// selected pane by itself, so that is done here from the pane's fitting size.
+private final class SettingsTabViewController: NSTabViewController {
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        tabStyle = .toolbar
+        canPropagateSelectedChildViewControllerTitle = false
+    }
+
+    override func viewDidAppear() {
+        super.viewDidAppear()
+        fitWindowToSelectedPane(animated: false)
+    }
+
+    override func tabView(_ tabView: NSTabView, didSelect tabViewItem: NSTabViewItem?) {
+        super.tabView(tabView, didSelect: tabViewItem)
+        fitWindowToSelectedPane(animated: true)
+    }
+
+    private func fitWindowToSelectedPane(animated: Bool) {
+        guard let window = view.window,
+              tabViewItems.indices.contains(selectedTabViewItemIndex),
+              let pane = tabViewItems[selectedTabViewItemIndex].viewController else { return }
+        pane.view.layoutSubtreeIfNeeded()
+        let size = pane.view.fittingSize
+        var frame = window.frameRect(forContentRect: NSRect(origin: .zero, size: size))
+        let current = window.frame
+        // Keep the window's top-left corner where it is, like System Settings.
+        frame.origin = NSPoint(x: current.minX, y: current.maxY - frame.height)
+        window.setFrame(frame, display: true, animate: animated)
     }
 }
 
 /// Owns the single settings window; reopening brings the existing one forward.
 final class SettingsWindowController {
-    static let contentSize = NSSize(width: 480, height: 820)
-
     private let model: SettingsModel
     private var window: NSWindow?
 
@@ -278,20 +401,33 @@ final class SettingsWindowController {
 
     func show() {
         if window == nil {
-            let hosting = NSHostingController(rootView: SettingsView(model: model))
-            hosting.preferredContentSize = Self.contentSize
-            let window = NSWindow(contentViewController: hosting)
-            window.title = "RightCmd Settings"
-            window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
-            window.setContentSize(Self.contentSize)
-            window.contentMinSize = Self.contentSize
-            window.contentMaxSize = NSSize(width: Self.contentSize.width, height: .greatestFiniteMagnitude)
-            window.isReleasedWhenClosed = false
-            window.center()
-            self.window = window
+            window = makeWindow()
         }
         model.refresh()
         NSApp.activate()
         window?.makeKeyAndOrderFront(nil)
+    }
+
+    private func makeWindow() -> NSWindow {
+        let tabs = SettingsTabViewController()
+        tabs.addTabViewItem(makeTab("General", symbol: "gearshape", view: GeneralPane(model: model)))
+        tabs.addTabViewItem(makeTab("Matching", symbol: "textformat.abc", view: MatchingPane(model: model)))
+        tabs.addTabViewItem(makeTab("Appearance", symbol: "paintpalette", view: AppearancePane(model: model)))
+        tabs.addTabViewItem(makeTab("Exclusions", symbol: "eye.slash", view: ExclusionsPane(model: model)))
+
+        let window = NSWindow(contentViewController: tabs)
+        window.title = "RightCmd Settings"
+        window.styleMask = [.titled, .closable, .miniaturizable]
+        window.toolbarStyle = .preference
+        window.isReleasedWhenClosed = false
+        window.center()
+        return window
+    }
+
+    private func makeTab<V: View>(_ label: String, symbol: String, view: V) -> NSTabViewItem {
+        let item = NSTabViewItem(viewController: NSHostingController(rootView: view))
+        item.label = label
+        item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: label)
+        return item
     }
 }
