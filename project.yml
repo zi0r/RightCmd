@@ -1,0 +1,36 @@
+# XcodeGen spec (optional). `xcodegen generate` produces RightCmd.xcodeproj, which is the
+# easiest route to a Developer ID signature and notarization. SwiftPM via `make app` works
+# without it.
+name: RightCmd
+
+options:
+  bundleIdPrefix: com.rightcmd
+  deploymentTarget:
+    macOS: "26.0"
+  createIntermediateGroups: true
+
+packages:
+  RightCmdCore:
+    path: .
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MACOSX_DEPLOYMENT_TARGET: "26.0"
+    ENABLE_HARDENED_RUNTIME: YES
+    CODE_SIGN_ENTITLEMENTS: Packaging/RightCmd.entitlements
+
+targets:
+  RightCmd:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources/RightCmd
+    dependencies:
+      - package: RightCmdCore
+        product: RightCmdCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.rightcmd.app
+        INFOPLIST_FILE: Packaging/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
