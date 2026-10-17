@@ -60,7 +60,8 @@ struct OverlayView: View {
                 matchRow(
                     item.element,
                     isSelected: item.offset == state.selectedIndex,
-                    isPrioritized: state.prioritizedIDs.contains(item.element.id)
+                    isPrioritized: state.prioritizedIDs.contains(item.element.id),
+                    isDeprioritized: state.deprioritizedIDs.contains(item.element.id)
                 )
             }
             if state.matches.count > maxVisibleMatches {
@@ -72,7 +73,7 @@ struct OverlayView: View {
         }
     }
 
-    private func matchRow(_ app: AppCandidate, isSelected: Bool, isPrioritized: Bool) -> some View {
+    private func matchRow(_ app: AppCandidate, isSelected: Bool, isPrioritized: Bool, isDeprioritized: Bool) -> some View {
         HStack(spacing: 10) {
             if let image = icon(app) {
                 Image(nsImage: image)
@@ -92,6 +93,11 @@ struct OverlayView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .help("On your priority list")
+            } else if isDeprioritized {
+                Image(systemName: "arrow.down.to.line")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .help("On your deprioritized list")
             }
             Spacer(minLength: 0)
         }

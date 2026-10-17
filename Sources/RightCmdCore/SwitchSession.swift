@@ -13,19 +13,23 @@ public struct OverlayState: Equatable, Sendable {
     public var secureInputActive: Bool
     /// The ids of matches that are on the user's priority list, so the overlay can mark them.
     public var prioritizedIDs: Set<Int32>
+    /// The ids of matches that are on the user's deprioritized list.
+    public var deprioritizedIDs: Set<Int32>
 
     public init(
         query: String,
         matches: [AppCandidate],
         selectedIndex: Int?,
         secureInputActive: Bool,
-        prioritizedIDs: Set<Int32> = []
+        prioritizedIDs: Set<Int32> = [],
+        deprioritizedIDs: Set<Int32> = []
     ) {
         self.query = query
         self.matches = matches
         self.selectedIndex = selectedIndex
         self.secureInputActive = secureInputActive
         self.prioritizedIDs = prioritizedIDs
+        self.deprioritizedIDs = deprioritizedIDs
     }
 
     public var selected: AppCandidate? {
@@ -98,6 +102,7 @@ public final class SwitchSession {
     private var query = ""
     private var matches: [AppCandidate] = []
     private var prioritizedIDs: Set<Int32> = []
+    private var deprioritizedIDs: Set<Int32> = []
     private var selectedIndex: Int?
     private var overlayVisible = false
     /// The app most recently activated in this session, to avoid re-activating it.
@@ -173,6 +178,7 @@ public final class SwitchSession {
         query = ""
         matches = []
         prioritizedIDs = []
+        deprioritizedIDs = []
         selectedIndex = nil
         return actions
     }
@@ -183,6 +189,7 @@ public final class SwitchSession {
         query = ""
         matches = []
         prioritizedIDs = []
+        deprioritizedIDs = []
         selectedIndex = nil
         lastActivated = nil
         return actions
@@ -271,6 +278,7 @@ public final class SwitchSession {
         let ranked = AppMatcher.rankedMatches(for: query, in: context.candidates, options: settings.matchOptions)
         matches = ranked.map(\.candidate)
         prioritizedIDs = Set(ranked.filter { $0.priorityRank != nil }.map(\.candidate.id))
+        deprioritizedIDs = Set(ranked.filter { $0.deprioritizedRank != nil }.map(\.candidate.id))
         guard !matches.isEmpty else {
             selectedIndex = nil
             return
@@ -318,7 +326,8 @@ public final class SwitchSession {
             matches: matches,
             selectedIndex: selectedIndex,
             secureInputActive: context.secureInputActive,
-            prioritizedIDs: prioritizedIDs
+            prioritizedIDs: prioritizedIDs,
+            deprioritizedIDs: deprioritizedIDs
         )
         return [.showOverlay(state)]
     }

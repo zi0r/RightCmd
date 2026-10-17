@@ -24,7 +24,6 @@ final class SettingsModel: ObservableObject {
     @Published var launchAtLoginError: String?
     /// Running apps offered by the "Add Running App" menu, refreshed when the window opens.
     @Published var runningApps: [AppCandidate] = []
-    @Published var newPriorityPattern: String = ""
 
     private let store: SettingsStore
     private let appProvider = WorkspaceAppProvider()
@@ -45,41 +44,38 @@ final class SettingsModel: ObservableObject {
             .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
-    // MARK: Priority list editing
+    // MARK: Pattern list editing (priority and deprioritized lists)
+
+    typealias PatternList = WritableKeyPath<RightCmdCore.Settings, [String]>
 
     /// Adds an app by bundle identifier (stable across renames and localisation), or by
     /// name when it has none.
-    func addPriority(app: AppCandidate) {
-        addPriority(pattern: app.bundleIdentifier ?? app.name)
+    func add(app: AppCandidate, to list: PatternList) {
+        add(pattern: app.bundleIdentifier ?? app.name, to: list)
     }
 
-    func addPriority(pattern raw: String) {
+    func add(pattern raw: String, to list: PatternList) {
         let pattern = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !pattern.isEmpty else { return }
-        guard !settings.priorityPatterns.contains(where: { $0.caseInsensitiveCompare(pattern) == .orderedSame }) else { return }
-        settings.priorityPatterns.append(pattern)
+        guard !settings[keyPath: list].contains(where: { $0.caseInsensitiveCompare(pattern) == .orderedSame }) else { return }
+        settings[keyPath: list].append(pattern)
     }
 
-    func addTypedPriority() {
-        addPriority(pattern: newPriorityPattern)
-        newPriorityPattern = ""
-    }
-
-    func movePriority(at index: Int, by delta: Int) {
+    func move(at index: Int, by delta: Int, in list: PatternList) {
         let target = index + delta
-        guard settings.priorityPatterns.indices.contains(index),
-              settings.priorityPatterns.indices.contains(target) else { return }
-        settings.priorityPatterns.swapAt(index, target)
+        guard settings[keyPath: list].indices.contains(index),
+              settings[keyPath: list].indices.contains(target) else { return }
+        settings[keyPath: list].swapAt(index, target)
     }
 
-    func removePriority(at index: Int) {
-        guard settings.priorityPatterns.indices.contains(index) else { return }
-        settings.priorityPatterns.remove(at: index)
+    func remove(at index: Int, from list: PatternList) {
+        guard settings[keyPath: list].indices.contains(index) else { return }
+        settings[keyPath: list].remove(at: index)
     }
 
     /// A friendly label for a pattern: the running app's name when the pattern is its
     /// bundle identifier, otherwise the pattern itself.
-    func displayName(forPriorityPattern pattern: String) -> String {
+    func displayName(forPattern pattern: String) -> String {
         if let app = runningApps.first(where: { $0.bundleIdentifier?.caseInsensitiveCompare(pattern) == .orderedSame }) {
             return app.name
         }
@@ -88,7 +84,7 @@ final class SettingsModel: ObservableObject {
 
     /// Whether the label differs from the raw pattern (so the pattern is worth showing too).
     func isBundleIdentifierPattern(_ pattern: String) -> Bool {
-        displayName(forPriorityPattern: pattern) != pattern
+        displayName(forPattern: pattern) != pattern
     }
 
     /// A `ColorPicker` binding for one of the icon colours. A picker can hand back a colour
@@ -229,59 +225,81 @@ struct MatchingPane: View {
 
             SettingsGroup(title: "Priority apps") {
                 Hint("Apps on this list outrank every other match, top first. They still have to match what you type; priority only settles the order.")
-                priorityList
-                HStack {
-                    Menu("Add Running App") {
-                        ForEach(model.runningApps, id: \.id) { app in
-                            Button(app.name) { model.addPriority(app: app) }
-                        }
-                    }
-                    .fixedSize()
-                    TextField("or a name / bundle id pattern", text: $model.newPriorityPattern)
-                        .textFieldStyle(.roundedBorder)
-                        .onSubmit { model.addTypedPriority() }
-                    Button("Add") { model.addTypedPriority() }
-                        .disabled(model.newPriorityPattern.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
+                PatternListEditor(model: model, list: \.priorityPatterns, emptyText: "No priority apps yet.")
+            }
+
+            SettingsGroup(title: "Deprioritized apps") {
+                Hint("Apps on this list rank after every other match but stay switchable, top first. An app on both lists counts as a priority app.")
+                PatternListEditor(model: model, list: \.deprioritizedPatterns, emptyText: "No deprioritized apps yet.")
             }
         }
     }
+}
 
-    private var priorityList: some View {
+/// An ordered list of app patterns with move/remove controls, an add-running-app menu and
+/// a free-text pattern field. Used for both the priority and the deprioritized lists.
+private struct PatternListEditor: View {
+    @ObservedObject var model: SettingsModel
+    let list: SettingsModel.PatternList
+    let emptyText: String
+    @State private var draft: String = ""
+
+    private var patterns: [String] { model.settings[keyPath: list] }
+
+    var body: some View {
         List {
-            if model.settings.priorityPatterns.isEmpty {
-                Text("No priority apps yet.")
+            if patterns.isEmpty {
+                Text(emptyText)
                     .foregroundStyle(.secondary)
             }
-            ForEach(Array(model.settings.priorityPatterns.enumerated()), id: \.offset) { item in
-                priorityRow(index: item.offset, pattern: item.element)
+            ForEach(Array(patterns.enumerated()), id: \.offset) { item in
+                row(index: item.offset, pattern: item.element)
             }
         }
         .listStyle(.bordered(alternatesRowBackgrounds: true))
-        .frame(height: 170)
+        .frame(height: 150)
+
+        HStack {
+            Menu("Add Running App") {
+                ForEach(model.runningApps, id: \.id) { app in
+                    Button(app.name) { model.add(app: app, to: list) }
+                }
+            }
+            .fixedSize()
+            TextField("or a name / bundle id pattern", text: $draft)
+                .textFieldStyle(.roundedBorder)
+                .onSubmit { addDraft() }
+            Button("Add") { addDraft() }
+                .disabled(draft.trimmingCharacters(in: .whitespaces).isEmpty)
+        }
     }
 
-    private func priorityRow(index: Int, pattern: String) -> some View {
-        let count = model.settings.priorityPatterns.count
+    private func addDraft() {
+        model.add(pattern: draft, to: list)
+        draft = ""
+    }
+
+    private func row(index: Int, pattern: String) -> some View {
+        let count = patterns.count
         return HStack(spacing: 8) {
             Text("\(index + 1).")
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
                 .frame(width: 24, alignment: .trailing)
             VStack(alignment: .leading, spacing: 1) {
-                Text(model.displayName(forPriorityPattern: pattern))
+                Text(model.displayName(forPattern: pattern))
                 if model.isBundleIdentifierPattern(pattern) {
                     Text(pattern).font(.caption).foregroundStyle(.secondary)
                 }
             }
             Spacer()
-            Button { model.movePriority(at: index, by: -1) } label: { Image(systemName: "chevron.up") }
+            Button { model.move(at: index, by: -1, in: list) } label: { Image(systemName: "chevron.up") }
                 .disabled(index == 0)
                 .help("Move up")
-            Button { model.movePriority(at: index, by: 1) } label: { Image(systemName: "chevron.down") }
+            Button { model.move(at: index, by: 1, in: list) } label: { Image(systemName: "chevron.down") }
                 .disabled(index == count - 1)
                 .help("Move down")
-            Button(role: .destructive) { model.removePriority(at: index) } label: { Image(systemName: "minus.circle") }
+            Button(role: .destructive) { model.remove(at: index, from: list) } label: { Image(systemName: "minus.circle") }
                 .help("Remove")
         }
         .buttonStyle(.borderless)

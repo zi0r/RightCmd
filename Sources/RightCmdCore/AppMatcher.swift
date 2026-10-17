@@ -10,11 +10,39 @@ public struct MatchOptions: Equatable, Sendable {
     public var initials: Bool
     /// Apps that outrank all other matches, in order. See `PriorityList`.
     public var priority: PriorityList
+    /// Apps that rank after all other matches (still switchable), in order. An app on both
+    /// lists is treated as prioritised.
+    public var deprioritized: PriorityList
 
-    public init(wordPrefixes: Bool = true, initials: Bool = true, priority: PriorityList = .empty) {
+    public init(
+        wordPrefixes: Bool = true,
+        initials: Bool = true,
+        priority: PriorityList = .empty,
+        deprioritized: PriorityList = .empty
+    ) {
         self.wordPrefixes = wordPrefixes
         self.initials = initials
         self.priority = priority
+        self.deprioritized = deprioritized
+    }
+}
+
+/// Where a match sits relative to the user's priority and deprioritized lists.
+public enum MatchPlacement: Equatable, Sendable {
+    /// On the priority list, at this position (0 = first).
+    case prioritized(rank: Int)
+    /// On neither list.
+    case normal
+    /// On the deprioritized list, at this position (0 = first among the deprioritized).
+    case deprioritized(rank: Int)
+
+    /// Sort key: prioritised first, then normal, then deprioritised; ranks within a group.
+    var order: (Int, Int) {
+        switch self {
+        case .prioritized(let rank): return (0, rank)
+        case .normal: return (1, 0)
+        case .deprioritized(let rank): return (2, rank)
+        }
     }
 }
 
@@ -36,8 +64,19 @@ public enum MatchTier: Int, Comparable, Sendable {
 public struct RankedMatch: Equatable, Sendable {
     public let candidate: AppCandidate
     public let tier: MatchTier
+    public let placement: MatchPlacement
+
     /// Position in the user's priority list, or nil if not prioritised.
-    public let priorityRank: Int?
+    public var priorityRank: Int? {
+        if case .prioritized(let rank) = placement { return rank }
+        return nil
+    }
+
+    /// Position in the user's deprioritized list, or nil if not deprioritised.
+    public var deprioritizedRank: Int? {
+        if case .deprioritized(let rank) = placement { return rank }
+        return nil
+    }
 }
 
 /// Ranks running applications against the letters typed while the activator key is held.
@@ -60,7 +99,7 @@ public enum AppMatcher {
         struct Scored {
             let candidate: AppCandidate
             let tier: MatchTier
-            let priorityRank: Int?
+            let placement: MatchPlacement
             let foldedName: String
         }
 
@@ -74,29 +113,23 @@ public enum AppMatcher {
             scored.append(Scored(
                 candidate: candidate,
                 tier: tier,
-                priorityRank: options.priority.rank(of: candidate),
+                placement: placement(of: candidate, options: options),
                 foldedName: foldedName
             ))
         }
 
         scored.sort { lhs, rhs in
-            switch (lhs.priorityRank, rhs.priorityRank) {
-            case let (l?, r?) where l != r:
-                return l < r
-            case (.some, .none):
-                return true
-            case (.none, .some):
-                return false
-            default:
-                break
-            }
+            let (lGroup, lRank) = lhs.placement.order
+            let (rGroup, rRank) = rhs.placement.order
+            if lGroup != rGroup { return lGroup < rGroup }
+            if lRank != rRank { return lRank < rRank }
             if lhs.tier != rhs.tier { return lhs.tier < rhs.tier }
             if lhs.foldedName != rhs.foldedName { return lhs.foldedName < rhs.foldedName }
             if lhs.candidate.name != rhs.candidate.name { return lhs.candidate.name < rhs.candidate.name }
             return lhs.candidate.id < rhs.candidate.id
         }
 
-        return scored.map { RankedMatch(candidate: $0.candidate, tier: $0.tier, priorityRank: $0.priorityRank) }
+        return scored.map { RankedMatch(candidate: $0.candidate, tier: $0.tier, placement: $0.placement) }
     }
 
     /// Convenience: the matching candidates only, best first.
@@ -106,6 +139,13 @@ public enum AppMatcher {
         options: MatchOptions = MatchOptions()
     ) -> [AppCandidate] {
         rankedMatches(for: query, in: candidates, options: options).map(\.candidate)
+    }
+
+    /// Priority wins over deprioritisation when an app is on both lists.
+    static func placement(of candidate: AppCandidate, options: MatchOptions) -> MatchPlacement {
+        if let rank = options.priority.rank(of: candidate) { return .prioritized(rank: rank) }
+        if let rank = options.deprioritized.rank(of: candidate) { return .deprioritized(rank: rank) }
+        return .normal
     }
 
     /// The best tier at which an already-folded name matches an already-folded query.

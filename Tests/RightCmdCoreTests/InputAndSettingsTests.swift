@@ -242,6 +242,8 @@ final class SettingsTests: XCTestCase {
         XCTAssertFalse(s.includeFinder)
         XCTAssertEqual(s.priorityPatterns, [])
         XCTAssertTrue(s.priorityList.isEmpty)
+        XCTAssertEqual(s.deprioritizedPatterns, [])
+        XCTAssertTrue(s.deprioritizedList.isEmpty)
     }
 
     func testFinderIsExcludedByDefault() {
@@ -290,6 +292,7 @@ final class SettingsTests: XCTestCase {
         s.overlayPosition = .top
         s.excludedPatterns = ["com.apple.*", "Slack"]
         s.priorityPatterns = ["Xcode", "com.google.*"]
+        s.deprioritizedPatterns = ["Safari"]
         s.includeFinder = true
         let data = try JSONEncoder().encode(s)
         let decoded = try JSONDecoder().decode(Settings.self, from: data)
@@ -328,7 +331,13 @@ final class SettingsTests: XCTestCase {
         var s = Settings()
         s.matchWordPrefixes = false
         s.priorityPatterns = ["Slack"]
-        XCTAssertEqual(s.matchOptions, MatchOptions(wordPrefixes: false, initials: true, priority: PriorityList(patterns: ["Slack"])))
+        s.deprioritizedPatterns = ["Safari"]
+        XCTAssertEqual(s.matchOptions, MatchOptions(
+            wordPrefixes: false,
+            initials: true,
+            priority: PriorityList(patterns: ["Slack"]),
+            deprioritized: PriorityList(patterns: ["Safari"])
+        ))
     }
 }
 

@@ -1,6 +1,20 @@
 # Changelog
 
-## 1.0.1 — 2026-10-17
+## 1.0.2 — 2026-10-17
+
+### Added
+- **Deprioritized apps**: the mirror of the priority list. Apps on it still match and are
+  still switchable, but rank after every other match (list order among themselves); an app
+  on both lists counts as prioritised. Marked with a down‑arrow in the overlay. The two
+  lists share one editor in Settings › Matching.
+- **Let Space reach the system**: passes ⌘Space through for Spotlight/Raycast/Alfred‑style
+  launchers, alongside the existing ←/→ pass‑through.
+
+### Changed
+- `RankedMatch` reports a `MatchPlacement` (prioritised / normal / deprioritised);
+  `priorityRank` remains as a derived property.
+
+## 1.0.1 — 2026-10-16
 
 The first version that has been built and used on macOS 26; everything below was added or
 fixed against real use after the initial 1.0.0 drop.
@@ -20,8 +34,8 @@ fixed against real use after the initial 1.0.0 drop.
   InstantSpaceSwitcher synthetic‑swipe technique; private symbols resolved at runtime,
   activation held until the Space change is reported, in‑flight requests queued and
   re‑planned.
-- **Pass‑through settings**: ←/→ and Space to the system, keys pressed with ⇧/⌥/⌃ to the
-  front app, and delivery of the right ⌘ modifier itself for apps that react to it.
+- **Pass‑through settings**: ←/→ to the system, keys pressed with ⇧/⌥/⌃ to the front app,
+  and delivery of the right ⌘ modifier itself for apps that react to it.
 - Tabbed settings window (General / Matching / Appearance / Exclusions), sized per pane.
 
 ### Fixed

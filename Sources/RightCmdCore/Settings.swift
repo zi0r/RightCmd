@@ -59,6 +59,8 @@ public struct Settings: Codable, Equatable, Sendable {
     public var excludedPatterns: [String] = []
     /// Apps that outrank all other matches, highest priority first. Same pattern syntax.
     public var priorityPatterns: [String] = []
+    /// Apps that rank after all other matches but stay switchable; among them, list order.
+    public var deprioritizedPatterns: [String] = []
     /// Finder is always running and always wins "F", so it is left out unless asked for.
     /// Kept separate from `excludedPatterns` so the default can change without migrating
     /// user data and so re-enabling it is a single switch.
@@ -69,11 +71,20 @@ public struct Settings: Codable, Equatable, Sendable {
     public static let `default` = Settings()
 
     public var matchOptions: MatchOptions {
-        MatchOptions(wordPrefixes: matchWordPrefixes, initials: matchInitials, priority: priorityList)
+        MatchOptions(
+            wordPrefixes: matchWordPrefixes,
+            initials: matchInitials,
+            priority: priorityList,
+            deprioritized: deprioritizedList
+        )
     }
 
     public var priorityList: PriorityList {
         PriorityList(patterns: priorityPatterns)
+    }
+
+    public var deprioritizedList: PriorityList {
+        PriorityList(patterns: deprioritizedPatterns)
     }
 
     /// Bundle identifiers excluded unless the matching `include…` setting is on.
@@ -98,7 +109,7 @@ public struct Settings: Codable, Equatable, Sendable {
         case commitOnUniqueMatch, movePointerToWindow, instantSpaceSwitching
         case passThroughLeftRightArrows, passThroughSpace, passThroughModifiedKeys, passThroughActivatorModifier
         case showOverlay, overlayPosition, tintMenuBarIcon, iconColors
-        case excludedPatterns, includeFinder, priorityPatterns
+        case excludedPatterns, includeFinder, priorityPatterns, deprioritizedPatterns
     }
 
     public init(from decoder: Decoder) throws {
@@ -122,6 +133,7 @@ public struct Settings: Codable, Equatable, Sendable {
         excludedPatterns = (try? c.decodeIfPresent([String].self, forKey: .excludedPatterns)) ?? defaults.excludedPatterns
         includeFinder = (try? c.decodeIfPresent(Bool.self, forKey: .includeFinder)) ?? defaults.includeFinder
         priorityPatterns = (try? c.decodeIfPresent([String].self, forKey: .priorityPatterns)) ?? defaults.priorityPatterns
+        deprioritizedPatterns = (try? c.decodeIfPresent([String].self, forKey: .deprioritizedPatterns)) ?? defaults.deprioritizedPatterns
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -144,6 +156,7 @@ public struct Settings: Codable, Equatable, Sendable {
         try c.encode(excludedPatterns, forKey: .excludedPatterns)
         try c.encode(includeFinder, forKey: .includeFinder)
         try c.encode(priorityPatterns, forKey: .priorityPatterns)
+        try c.encode(deprioritizedPatterns, forKey: .deprioritizedPatterns)
     }
 }
 

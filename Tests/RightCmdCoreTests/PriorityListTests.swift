@@ -124,3 +124,105 @@ final class SwitchSessionPriorityTests: XCTestCase {
         XCTAssertEqual(log.activations, [Fixtures.safari], "Slack is top but already in front, so the next match wins")
     }
 }
+
+final class AppMatcherDeprioritizeTests: XCTestCase {
+    private func names(_ query: String, priority: [String] = [], deprioritized: [String], in apps: [AppCandidate] = Fixtures.all) -> [String] {
+        let options = MatchOptions(
+            priority: PriorityList(patterns: priority),
+            deprioritized: PriorityList(patterns: deprioritized)
+        )
+        return AppMatcher.matches(for: query, in: apps, options: options).map(\.name)
+    }
+
+    func testDeprioritisedAppMovesToTheEnd() {
+        XCTAssertEqual(names("s", deprioritized: []).first, "Safari")
+        XCTAssertEqual(names("s", deprioritized: ["Safari"]).last, "Safari")
+        XCTAssertEqual(names("s", deprioritized: ["Safari"]), ["Sequel Ace", "Slack", "System Settings", "Visual Studio Code", "Safari"])
+    }
+
+    func testDeprioritisedAppIsStillAMatch() {
+        XCTAssertEqual(names("saf", deprioritized: ["Safari"]), ["Safari"], "alone, it still wins: it is switchable")
+        XCTAssertEqual(names("x", deprioritized: ["Xcode"]), ["Xcode"])
+    }
+
+    func testDeprioritisedOrderIsTheListOrder() {
+        XCTAssertEqual(names("s", deprioritized: ["Slack", "Safari"]).suffix(2), ["Slack", "Safari"])
+        XCTAssertEqual(names("s", deprioritized: ["Safari", "Slack"]).suffix(2), ["Safari", "Slack"])
+    }
+
+    func testDeprioritisationOutranksMatchTier() {
+        // Cheese is a better textual match for "ch" than Chrome, but is deprioritised.
+        let cheese = AppCandidate(id: 900, name: "Cheese")
+        let apps = Fixtures.all + [cheese]
+        XCTAssertEqual(names("ch", deprioritized: [], in: apps), ["Cheese", "Google Chrome"])
+        XCTAssertEqual(names("ch", deprioritized: ["Cheese"], in: apps), ["Google Chrome", "Cheese"])
+    }
+
+    func testPriorityWinsWhenOnBothLists() {
+        XCTAssertEqual(names("s", priority: ["Slack"], deprioritized: ["Slack"]).first, "Slack")
+    }
+
+    func testAllThreeGroupsOrderCorrectly() {
+        let result = names("s", priority: ["System Settings"], deprioritized: ["Safari"])
+        XCTAssertEqual(result.first, "System Settings")
+        XCTAssertEqual(result.last, "Safari")
+        XCTAssertEqual(result, ["System Settings", "Sequel Ace", "Slack", "Visual Studio Code", "Safari"])
+    }
+
+    func testWildcardDeprioritisation() {
+        // Everything from Apple goes last; among them, normal order.
+        let result = names("s", deprioritized: ["com.apple.*"])
+        XCTAssertEqual(result.suffix(2), ["Safari", "System Settings"])
+        XCTAssertEqual(result.prefix(3), ["Sequel Ace", "Slack", "Visual Studio Code"])
+    }
+
+    func testRankedMatchReportsPlacement() {
+        let options = MatchOptions(priority: PriorityList(patterns: ["Slack"]), deprioritized: PriorityList(patterns: ["Safari"]))
+        let ranked = AppMatcher.rankedMatches(for: "s", in: Fixtures.all, options: options)
+        XCTAssertEqual(ranked.first?.placement, .prioritized(rank: 0))
+        XCTAssertEqual(ranked.first?.priorityRank, 0)
+        XCTAssertNil(ranked.first?.deprioritizedRank)
+        XCTAssertEqual(ranked.last?.placement, .deprioritized(rank: 0))
+        XCTAssertEqual(ranked.last?.deprioritizedRank, 0)
+        XCTAssertNil(ranked.last?.priorityRank)
+        XCTAssertEqual(ranked[1].placement, .normal)
+    }
+}
+
+final class SwitchSessionDeprioritizeTests: XCTestCase {
+    private func makeSession(deprioritized: [String], commit: Bool = false) -> SwitchSession {
+        var settings = Settings()
+        settings.commitOnUniqueMatch = commit
+        settings.deprioritizedPatterns = deprioritized
+        return SwitchSession(settings: settings) {
+            SessionContext(candidates: Fixtures.all, frontmost: Fixtures.finder)
+        }
+    }
+
+    func testSessionUsesDeprioritisationFromSettings() {
+        let session = makeSession(deprioritized: ["Safari"])
+        var log = ActionLog()
+        log.record(session.handle(.activatorPressed))
+        log.record(session.handle(.key(.character("s"))))
+        XCTAssertEqual(log.activations, [Fixtures.sequel], "Safari no longer wins \"s\"")
+        XCTAssertEqual(log.overlays.last?.matches.last, Fixtures.safari)
+    }
+
+    func testDeprioritisedUniqueMatchStillCommits() {
+        let session = makeSession(deprioritized: ["Xcode"], commit: true)
+        var log = ActionLog()
+        log.record(session.handle(.activatorPressed))
+        log.record(session.handle(.key(.character("x"))))
+        XCTAssertEqual(log.activations, [Fixtures.xcode])
+    }
+
+    func testOverlayMarksDeprioritisedMatches() {
+        let session = makeSession(deprioritized: ["Safari", "Slack"])
+        _ = session.handle(.activatorPressed)
+        let actions = session.handle(.key(.character("s")))
+        guard case .showOverlay(let state)? = actions.first else { return XCTFail("expected overlay") }
+        XCTAssertEqual(state.deprioritizedIDs, [Fixtures.safari.id, Fixtures.slack.id])
+        XCTAssertEqual(state.prioritizedIDs, [])
+        XCTAssertEqual(state.matches.suffix(2), [Fixtures.safari, Fixtures.slack])
+    }
+}

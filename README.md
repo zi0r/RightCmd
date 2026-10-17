@@ -77,7 +77,9 @@ Within a tier results are alphabetical. Type more letters, or use the arrow keys
 
 **Priority apps** (Settings › Priority apps) let you put your own apps first. Anything on the list that matches what you typed outranks every other match, in list order — so with Slack at the top, `S` goes to Slack even though Safari sorts first alphabetically, and with Chrome listed, `C` prefers Chrome over an app whose *name* starts with "C". Priority never adds an app that doesn't match. Add apps from the running-app menu (stored by bundle id, so renames and localisation don't matter) or type a name/bundle‑id pattern; reorder with the arrows. Prioritised matches show a small pin in the overlay.
 
-**Settings** (menu bar › Settings…) are organised in four tabs: *General* (switch mode, commit on unique match, prefer another app, move the pointer, ←/→, Space and modified‑key pass‑through, modifier delivery, instant Space switching, launch at login, permission status), *Matching* (word‑prefix and initials matching, the priority list), *Appearance* (overlay, menu bar icon tint and colours), and *Exclusions* (Finder opt‑in, wildcard patterns such as `com.apple.*`).
+**Deprioritized apps** are the mirror image: anything on that list still matches and is still switchable, but ranks after every other match (list order among themselves), so a helper app that shares a first letter with something you use constantly never wins a tie — type one more letter, or let it be the only match, and it's reachable as ever. An app on both lists counts as a priority app. Deprioritised matches show a small down‑arrow in the overlay.
+
+**Settings** (menu bar › Settings…) are organised in four tabs: *General* (switch mode, commit on unique match, prefer another app, move the pointer, ←/→, Space and modified‑key pass‑through, modifier delivery, instant Space switching, launch at login, permission status), *Matching* (word‑prefix and initials matching, the priority and deprioritized lists), *Appearance* (overlay, menu bar icon tint and colours), and *Exclusions* (Finder opt‑in, wildcard patterns such as `com.apple.*`).
 
 ### Things to know
 
