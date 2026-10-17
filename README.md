@@ -58,6 +58,8 @@ macOS will ask for **Accessibility** permission. RightCmd needs it to observe ke
 
 **Switch as soon as only one app matches** (on by default) ends the search the moment the typed letters are unambiguous: `right⌘ + X` jumps to Xcode on the first keystroke and ignores anything else you type until you let go. This is what makes the on‑release mode feel instant. Turn it off in Settings if you prefer to see the match before it happens.
 
+**Menu bar icon** (on by default) tints the icon while right ⌘ is held: blue while listening, green once the letters match an app, red when they match nothing. The colour lingers for half a second after you let go so a quick switch still shows its result. All three colours are configurable in Settings; it's a quick confirmation that works even with the overlay turned off.
+
 **Matching** is case‑ and accent‑insensitive and ranks results deterministically so the same keys always land on the same app:
 
 1. name starts with the letters (`sa` → Safari)
@@ -66,7 +68,7 @@ macOS will ask for **Accessibility** permission. RightCmd needs it to observe ke
 
 Within a tier results are alphabetical. Type more letters, or use the arrow keys, to disambiguate.
 
-**Settings** (menu bar › Settings…) let you change the mode, overlay position, matching strategies, exclude apps by name or bundle id with wildcards (`com.apple.*`), prefer a *different* app when the best match is already in front, and enable launch at login.
+**Settings** (menu bar › Settings…) let you change the mode, overlay position, icon tint and colours, matching strategies, exclude apps by name or bundle id with wildcards (`com.apple.*`), prefer a *different* app when the best match is already in front, and enable launch at login.
 
 ### Things to know
 
@@ -98,6 +100,8 @@ Sources/RightCmd          Thin AppKit shell (no business logic)
   OverlayPanel           non‑activating NSPanel hosting a SwiftUI view
   StatusMenuController, SettingsWindow, LaunchAtLogin, AppDelegate
 ```
+
+Two naming notes for anyone extending the AppKit layer: `RightCmdCore.Settings` is written out in files that import SwiftUI (which has its own `Settings` scene), and the colour type is `SRGBColor` because ApplicationServices still exports QuickDraw's `RGBColor`.
 
 The split is deliberate: everything that decides *what should happen* lives in `RightCmdCore` and is exercised by `swift test` without a display, permissions, or a running window server. The AppKit layer only translates system events in and carries actions out.
 
