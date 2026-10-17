@@ -177,6 +177,8 @@ struct GeneralPane: View {
                 Hint("For ⌘← / ⌘→ Space shortcuts bound in System Settings › Keyboard › Shortcuts › Mission Control. ↑ and ↓ still cycle between matches.")
                 Toggle("Pass through keys pressed with Shift, Option or Control", isOn: $model.settings.passThroughModifiedKeys)
                 Hint("Lets shortcuts like ⌘⇧P reach the front app while right ⌘ is held. With this on, type app names with right ⌘ alone (Shift is no longer ignored).")
+                Toggle("Let apps see right ⌘ itself", isOn: $model.settings.passThroughActivatorModifier)
+                Hint("Delivers the modifier press and release, for apps that react to ⌘ being held (link underlining, temporary tool modes). Leave off unless a pass-through shortcut misbehaves; it also triggers “double-tap ⌘” launchers.")
                 Toggle("Switch Spaces instantly", isOn: $model.settings.instantSpaceSwitching)
                     .disabled(!SpaceSwitcher.isAvailable)
                 Hint(SpaceSwitcher.isAvailable

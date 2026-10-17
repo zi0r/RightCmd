@@ -40,6 +40,11 @@ public struct Settings: Codable, Equatable, Sendable {
     /// to the frontmost app while right ⌘ is held, so shortcuts such as ⌘⇧P keep working.
     /// While on, app names must be typed with right ⌘ alone.
     public var passThroughModifiedKeys: Bool = false
+    /// Deliver the right ⌘ press and release themselves to apps instead of swallowing
+    /// them. Needed only by apps that react to the modifier going down (⌘-hover link
+    /// underlining, temporary tool modes, menu alternates); off by default because a bare
+    /// ⌘ press also trips "double-tap ⌘" launchers.
+    public var passThroughActivatorModifier: Bool = false
     public var showOverlay: Bool = true
     public var overlayPosition: OverlayPosition = .center
     /// Tint the menu bar icon while right ⌘ is held: `iconColors.listening` until something
@@ -88,7 +93,7 @@ public struct Settings: Codable, Equatable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case switchMode, matchWordPrefixes, matchInitials, skipFrontmostApp
         case commitOnUniqueMatch, movePointerToWindow, instantSpaceSwitching
-        case passThroughLeftRightArrows, passThroughModifiedKeys
+        case passThroughLeftRightArrows, passThroughModifiedKeys, passThroughActivatorModifier
         case showOverlay, overlayPosition, tintMenuBarIcon, iconColors
         case excludedPatterns, includeFinder, priorityPatterns
     }
@@ -105,6 +110,7 @@ public struct Settings: Codable, Equatable, Sendable {
         instantSpaceSwitching = (try? c.decodeIfPresent(Bool.self, forKey: .instantSpaceSwitching)) ?? defaults.instantSpaceSwitching
         passThroughLeftRightArrows = (try? c.decodeIfPresent(Bool.self, forKey: .passThroughLeftRightArrows)) ?? defaults.passThroughLeftRightArrows
         passThroughModifiedKeys = (try? c.decodeIfPresent(Bool.self, forKey: .passThroughModifiedKeys)) ?? defaults.passThroughModifiedKeys
+        passThroughActivatorModifier = (try? c.decodeIfPresent(Bool.self, forKey: .passThroughActivatorModifier)) ?? defaults.passThroughActivatorModifier
         showOverlay = (try? c.decodeIfPresent(Bool.self, forKey: .showOverlay)) ?? defaults.showOverlay
         overlayPosition = (try? c.decodeIfPresent(OverlayPosition.self, forKey: .overlayPosition)) ?? defaults.overlayPosition
         tintMenuBarIcon = (try? c.decodeIfPresent(Bool.self, forKey: .tintMenuBarIcon)) ?? defaults.tintMenuBarIcon
@@ -125,6 +131,7 @@ public struct Settings: Codable, Equatable, Sendable {
         try c.encode(instantSpaceSwitching, forKey: .instantSpaceSwitching)
         try c.encode(passThroughLeftRightArrows, forKey: .passThroughLeftRightArrows)
         try c.encode(passThroughModifiedKeys, forKey: .passThroughModifiedKeys)
+        try c.encode(passThroughActivatorModifier, forKey: .passThroughActivatorModifier)
         try c.encode(showOverlay, forKey: .showOverlay)
         try c.encode(overlayPosition, forKey: .overlayPosition)
         try c.encode(tintMenuBarIcon, forKey: .tintMenuBarIcon)

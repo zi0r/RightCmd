@@ -222,6 +222,7 @@ final class SettingsTests: XCTestCase {
         XCTAssertFalse(s.instantSpaceSwitching)
         XCTAssertFalse(s.passThroughLeftRightArrows)
         XCTAssertFalse(s.passThroughModifiedKeys)
+        XCTAssertFalse(s.passThroughActivatorModifier)
         XCTAssertTrue(s.showOverlay)
         XCTAssertEqual(s.overlayPosition, .center)
         XCTAssertTrue(s.tintMenuBarIcon)
@@ -271,6 +272,7 @@ final class SettingsTests: XCTestCase {
         s.instantSpaceSwitching = true
         s.passThroughLeftRightArrows = true
         s.passThroughModifiedKeys = true
+        s.passThroughActivatorModifier = true
         s.tintMenuBarIcon = false
         s.iconColors.matched = SRGBColor(hex: "#123456")!
         s.overlayPosition = .top

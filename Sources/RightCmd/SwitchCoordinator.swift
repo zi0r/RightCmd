@@ -22,6 +22,10 @@ final class SwitchCoordinator {
     /// Verifies against the live HID modifier state that right ⌘ is really still down,
     /// so a missed release can never leave the keyboard swallowed.
     private var heldWatchdog: Timer?
+    /// Whether the right ⌘ *press* was delivered to apps. Decided once per hold so the
+    /// release is handled the same way even if the setting changes mid-hold; apps must
+    /// never see an unbalanced modifier sequence.
+    private var activatorEventDelivered = false
 
     private(set) var lastError: Error?
 
@@ -106,13 +110,14 @@ final class SwitchCoordinator {
         case .flagsChanged(let keyCode, let flags):
             switch ActivatorKey.change(forFlagsChangedKeyCode: keyCode, flags: flags) {
             case .pressed:
-                guard !activatorHeld else { return true }
+                guard !activatorHeld else { return !activatorEventDelivered }
+                activatorEventDelivered = settingsStore.settings.passThroughActivatorModifier
                 pressActivator()
-                return true
+                return !activatorEventDelivered
             case .released:
                 guard activatorHeld else { return false }
                 releaseActivator(reason: "key up")
-                return true
+                return !activatorEventDelivered
             case .none:
                 // Another modifier changed. If ⌘ is no longer reported at all, the release
                 // we were waiting for has been lost; let go now and pass this event on.
