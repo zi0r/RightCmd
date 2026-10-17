@@ -173,6 +173,7 @@ final class SettingsTests: XCTestCase {
         XCTAssertFalse(s.skipFrontmostApp)
         XCTAssertTrue(s.commitOnUniqueMatch)
         XCTAssertFalse(s.movePointerToWindow)
+        XCTAssertFalse(s.instantSpaceSwitching)
         XCTAssertTrue(s.showOverlay)
         XCTAssertEqual(s.overlayPosition, .center)
         XCTAssertTrue(s.tintMenuBarIcon)
@@ -219,6 +220,7 @@ final class SettingsTests: XCTestCase {
         s.matchInitials = false
         s.commitOnUniqueMatch = false
         s.movePointerToWindow = true
+        s.instantSpaceSwitching = true
         s.tintMenuBarIcon = false
         s.iconColors.matched = SRGBColor(hex: "#123456")!
         s.overlayPosition = .top
@@ -364,5 +366,23 @@ final class SRGBColorTests: XCTestCase {
         let colors = IconColors(listening: SRGBColor(hex: "#111111")!, matched: SRGBColor(hex: "#222222")!, noMatch: SRGBColor(hex: "#333333")!)
         let data = try JSONEncoder().encode(colors)
         XCTAssertEqual(try JSONDecoder().decode(IconColors.self, from: data), colors)
+    }
+}
+
+final class SpaceSwitchPlannerTests: XCTestCase {
+    func testNoMoveWhenAlreadyThere() {
+        XCTAssertNil(SpaceSwitchPlanner.move(from: 2, to: 2, count: 5))
+    }
+
+    func testRightAndLeft() {
+        XCTAssertEqual(SpaceSwitchPlanner.move(from: 0, to: 3, count: 5), SpaceMove(direction: .right, steps: 3))
+        XCTAssertEqual(SpaceSwitchPlanner.move(from: 4, to: 1, count: 5), SpaceMove(direction: .left, steps: 3))
+        XCTAssertEqual(SpaceSwitchPlanner.move(from: 1, to: 2, count: 3), SpaceMove(direction: .right, steps: 1))
+    }
+
+    func testInvalidIndicesYieldNoMove() {
+        XCTAssertNil(SpaceSwitchPlanner.move(from: 0, to: 5, count: 5))
+        XCTAssertNil(SpaceSwitchPlanner.move(from: -1, to: 0, count: 5))
+        XCTAssertNil(SpaceSwitchPlanner.move(from: 0, to: 1, count: 0))
     }
 }

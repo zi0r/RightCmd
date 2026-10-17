@@ -30,13 +30,18 @@ final class SwitchCoordinator {
     init(
         settingsStore: SettingsStore,
         overlay: OverlayPresenting,
-        activator: AppActivating = AccessibilityAppActivator(),
+        activator: AppActivating? = nil,
         appProvider: AppProviding = WorkspaceAppProvider(),
         translator: KeyCharacterTranslating = KeyboardLayoutTranslator()
     ) {
         self.settingsStore = settingsStore
         self.overlay = overlay
-        self.activator = activator
+        // The default activator jumps Spaces instantly when the setting asks for it, then
+        // hands over to the Accessibility-based activation.
+        self.activator = activator ?? SpaceAwareActivator(
+            base: AccessibilityAppActivator(),
+            isEnabled: { [settingsStore] in settingsStore.settings.instantSpaceSwitching }
+        )
         self.appProvider = appProvider
         self.translator = translator
 

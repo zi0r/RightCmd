@@ -29,6 +29,8 @@ targets:
     dependencies:
       - package: RightCmdCore
         product: RightCmdCore
+      - package: RightCmdCore
+        product: SpaceSwitchKit
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.rightcmd.app

@@ -47,8 +47,8 @@ enum PointerMover {
     }
 
     private static func frame(of window: AXUIElement) -> CGRect? {
-        guard let origin: CGPoint = axValue(kAXPositionAttribute, of: window, type: .cgPoint, initial: .zero),
-              let size: CGSize = axValue(kAXSizeAttribute, of: window, type: .cgSize, initial: .zero) else {
+        guard let origin = pointAttribute(kAXPositionAttribute, of: window),
+              let size = sizeAttribute(kAXSizeAttribute, of: window) else {
             return nil
         }
         return CGRect(origin: origin, size: size)
@@ -70,15 +70,30 @@ enum PointerMover {
         return CFBooleanGetValue(unsafeBitCast(value, to: CFBoolean.self))
     }
 
-    private static func axValue<T>(_ attribute: String, of element: AXUIElement, type: AXValueType, initial: T) -> T? {
+    private static func axValue(_ attribute: String, of element: AXUIElement, type: AXValueType) -> AXValue? {
         var value: CFTypeRef?
         guard AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success,
               let value, CFGetTypeID(value) == AXValueGetTypeID() else { return nil }
         let axValue = unsafeBitCast(value, to: AXValue.self)
         guard AXValueGetType(axValue) == type else { return nil }
-        var result = initial
-        guard AXValueGetValue(axValue, type, &result) else { return nil }
-        return result
+        return axValue
+    }
+
+    // Concrete readers rather than a generic one: `AXValueGetValue` wants a raw pointer to
+    // the out variable, and that is only sound for plain-data types like these.
+
+    private static func pointAttribute(_ attribute: String, of element: AXUIElement) -> CGPoint? {
+        guard let axValue = axValue(attribute, of: element, type: .cgPoint) else { return nil }
+        var point = CGPoint.zero
+        guard AXValueGetValue(axValue, .cgPoint, &point) else { return nil }
+        return point
+    }
+
+    private static func sizeAttribute(_ attribute: String, of element: AXUIElement) -> CGSize? {
+        guard let axValue = axValue(attribute, of: element, type: .cgSize) else { return nil }
+        var size = CGSize.zero
+        guard AXValueGetValue(axValue, .cgSize, &size) else { return nil }
+        return size
     }
 
     // MARK: Pointer
