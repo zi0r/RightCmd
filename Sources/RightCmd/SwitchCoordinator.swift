@@ -129,10 +129,10 @@ final class SwitchCoordinator {
                 releaseActivator(reason: "key down without ⌘")
                 return false
             }
-            if KeyPassThrough.passes(keyCode: keyCode, settings: settingsStore.settings) {
-                // Hand the key to the system (e.g. ⌘← bound to "move left a Space") and
-                // keep the session going; checked before the repeat filter so a held key
-                // repeats for the system as usual.
+            if KeyPassThrough.passes(keyCode: keyCode, flags: flags, settings: settingsStore.settings) {
+                // Hand the key on (e.g. ⌘← bound to "move left a Space", or ⌘⇧P for a
+                // private window) and keep the session going; checked before the repeat
+                // filter so a held key repeats for the receiver as usual.
                 return false
             }
             if isRepeat || ActivatorKey.blocksTyping(flags) {
@@ -152,8 +152,8 @@ final class SwitchCoordinator {
 
         case .keyUp(let keyCode, let flags):
             guard activatorHeld else { return false }
-            if KeyPassThrough.passes(keyCode: keyCode, settings: settingsStore.settings) {
-                return false   // the matching key up must reach the system too
+            if KeyPassThrough.passes(keyCode: keyCode, flags: flags, settings: settingsStore.settings) {
+                return false   // the matching key up must reach the receiver too
             }
             return ActivatorKey.isRightCommandHeld(flags)
 

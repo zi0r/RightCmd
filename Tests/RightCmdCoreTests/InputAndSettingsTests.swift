@@ -38,21 +38,48 @@ final class KeyClassifierTests: XCTestCase {
 }
 
 final class KeyPassThroughTests: XCTestCase {
+    private let rightCmd: ModifierFlags = [.command, .rightCommandDevice]
+    private let keyP: Int64 = 35
+
     func testOffByDefaultPassesNothing() {
         let settings = Settings()
-        XCTAssertFalse(KeyPassThrough.passes(keyCode: KeyCode.leftArrow, settings: settings))
-        XCTAssertFalse(KeyPassThrough.passes(keyCode: KeyCode.rightArrow, settings: settings))
+        XCTAssertFalse(KeyPassThrough.passes(keyCode: KeyCode.leftArrow, flags: rightCmd, settings: settings))
+        XCTAssertFalse(KeyPassThrough.passes(keyCode: KeyCode.rightArrow, flags: rightCmd, settings: settings))
+        XCTAssertFalse(KeyPassThrough.passes(keyCode: keyP, flags: rightCmd.union([.shift, .leftShiftDevice]), settings: settings))
     }
 
-    func testOnlyLeftAndRightPassWhenEnabled() {
+    func testOnlyLeftAndRightPassWhenArrowSettingIsOn() {
         var settings = Settings()
         settings.passThroughLeftRightArrows = true
-        XCTAssertTrue(KeyPassThrough.passes(keyCode: KeyCode.leftArrow, settings: settings))
-        XCTAssertTrue(KeyPassThrough.passes(keyCode: KeyCode.rightArrow, settings: settings))
-        XCTAssertFalse(KeyPassThrough.passes(keyCode: KeyCode.upArrow, settings: settings), "↑ still cycles")
-        XCTAssertFalse(KeyPassThrough.passes(keyCode: KeyCode.downArrow, settings: settings), "↓ still cycles")
-        XCTAssertFalse(KeyPassThrough.passes(keyCode: 1, settings: settings), "letters are still ours")
-        XCTAssertFalse(KeyPassThrough.passes(keyCode: KeyCode.escape, settings: settings))
+        XCTAssertTrue(KeyPassThrough.passes(keyCode: KeyCode.leftArrow, flags: rightCmd, settings: settings))
+        XCTAssertTrue(KeyPassThrough.passes(keyCode: KeyCode.rightArrow, flags: rightCmd, settings: settings))
+        XCTAssertFalse(KeyPassThrough.passes(keyCode: KeyCode.upArrow, flags: rightCmd, settings: settings), "↑ still cycles")
+        XCTAssertFalse(KeyPassThrough.passes(keyCode: KeyCode.downArrow, flags: rightCmd, settings: settings), "↓ still cycles")
+        XCTAssertFalse(KeyPassThrough.passes(keyCode: 1, flags: rightCmd, settings: settings), "letters are still ours")
+        XCTAssertFalse(KeyPassThrough.passes(keyCode: KeyCode.escape, flags: rightCmd, settings: settings))
+    }
+
+    func testModifiedKeysPassWhenThatSettingIsOn() {
+        var settings = Settings()
+        settings.passThroughModifiedKeys = true
+        XCTAssertTrue(KeyPassThrough.passes(keyCode: keyP, flags: rightCmd.union([.shift, .leftShiftDevice]), settings: settings), "⌘⇧P")
+        XCTAssertTrue(KeyPassThrough.passes(keyCode: keyP, flags: rightCmd.union([.option, .leftOptionDevice]), settings: settings))
+        XCTAssertTrue(KeyPassThrough.passes(keyCode: keyP, flags: rightCmd.union([.control, .leftControlDevice]), settings: settings))
+        XCTAssertTrue(KeyPassThrough.passes(keyCode: keyP, flags: rightCmd.union([.leftCommandDevice]), settings: settings), "both ⌘ keys")
+        XCTAssertFalse(KeyPassThrough.passes(keyCode: keyP, flags: rightCmd, settings: settings), "right ⌘ alone is still ours")
+        XCTAssertFalse(KeyPassThrough.passes(keyCode: keyP, flags: rightCmd.union([.capsLock]), settings: settings), "Caps Lock is not a shortcut modifier")
+        XCTAssertFalse(KeyPassThrough.passes(keyCode: KeyCode.leftArrow, flags: rightCmd, settings: settings), "arrows need their own setting")
+    }
+
+    func testSettingsAreIndependent() {
+        var settings = Settings()
+        settings.passThroughLeftRightArrows = true
+        settings.passThroughModifiedKeys = false
+        XCTAssertFalse(KeyPassThrough.passes(keyCode: keyP, flags: rightCmd.union([.shift]), settings: settings))
+        settings.passThroughLeftRightArrows = false
+        settings.passThroughModifiedKeys = true
+        XCTAssertFalse(KeyPassThrough.passes(keyCode: KeyCode.rightArrow, flags: rightCmd, settings: settings))
+        XCTAssertTrue(KeyPassThrough.passes(keyCode: KeyCode.rightArrow, flags: rightCmd.union([.shift]), settings: settings), "⇧→ is a modified key")
     }
 }
 
@@ -194,6 +221,7 @@ final class SettingsTests: XCTestCase {
         XCTAssertFalse(s.movePointerToWindow)
         XCTAssertFalse(s.instantSpaceSwitching)
         XCTAssertFalse(s.passThroughLeftRightArrows)
+        XCTAssertFalse(s.passThroughModifiedKeys)
         XCTAssertTrue(s.showOverlay)
         XCTAssertEqual(s.overlayPosition, .center)
         XCTAssertTrue(s.tintMenuBarIcon)
@@ -242,6 +270,7 @@ final class SettingsTests: XCTestCase {
         s.movePointerToWindow = true
         s.instantSpaceSwitching = true
         s.passThroughLeftRightArrows = true
+        s.passThroughModifiedKeys = true
         s.tintMenuBarIcon = false
         s.iconColors.matched = SRGBColor(hex: "#123456")!
         s.overlayPosition = .top

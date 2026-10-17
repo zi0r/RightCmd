@@ -78,12 +78,25 @@ public enum KeyClassifier {
 
 /// Keys that are handed to the system untouched while right ⌘ is held.
 public enum KeyPassThrough {
-    /// True if a key event with this key code should be passed through rather than
-    /// swallowed and interpreted, given the settings. Applies to key down, key up and
-    /// auto-repeat alike, so the system sees a complete, ordinary key press.
-    public static func passes(keyCode: Int64, settings: Settings) -> Bool {
-        guard settings.passThroughLeftRightArrows else { return false }
-        return keyCode == KeyCode.leftArrow || keyCode == KeyCode.rightArrow
+    /// True if a key event with this key code and these flags should be passed through
+    /// rather than swallowed and interpreted, given the settings. Applies to key down, key
+    /// up and auto-repeat alike, so the receiver sees a complete, ordinary key press.
+    public static func passes(keyCode: Int64, flags: ModifierFlags, settings: Settings) -> Bool {
+        if settings.passThroughLeftRightArrows,
+           keyCode == KeyCode.leftArrow || keyCode == KeyCode.rightArrow {
+            return true
+        }
+        if settings.passThroughModifiedKeys, hasExtraModifier(flags) {
+            return true
+        }
+        return false
+    }
+
+    /// Shift, Option, Control, or the left ⌘ key held alongside right ⌘. Caps Lock and
+    /// the Fn/numeric-pad flags don't count; they don't make a key a shortcut.
+    public static func hasExtraModifier(_ flags: ModifierFlags) -> Bool {
+        flags.contains(.shift) || flags.contains(.option) || flags.contains(.control)
+            || flags.contains(.leftCommandDevice)
     }
 }
 
