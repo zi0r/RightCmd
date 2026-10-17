@@ -91,10 +91,16 @@ enum SpaceSwitcher {
 /// Space, the Space is changed instantly before the app is activated. Activation is held
 /// until the window server reports the Space change (or a short timeout), because
 /// activating first would make macOS start its own animated switch.
+///
+/// While a jump is in flight the window server can report an intermediate Space, so a
+/// request that arrives then (fast typing in as-you-type mode) is queued rather than
+/// planned immediately; when the change lands, the newest request is planned afresh and
+/// the superseded one is dropped.
 final class SpaceAwareActivator: AppActivating {
     private let base: AppActivating
     private let isEnabled: () -> Bool
     private var waiter: SpaceChangeWaiter?
+    private var queued: AppCandidate?
 
     init(base: AppActivating, isEnabled: @escaping () -> Bool) {
         self.base = base
@@ -103,9 +109,15 @@ final class SpaceAwareActivator: AppActivating {
 
     @discardableResult
     func activate(_ candidate: AppCandidate) -> Bool {
-        waiter?.cancel()
-        waiter = nil
+        if waiter != nil {
+            queued = candidate
+            return true
+        }
+        return activateNow(candidate)
+    }
 
+    @discardableResult
+    private func activateNow(_ candidate: AppCandidate) -> Bool {
         guard isEnabled(), let plan = SpaceSwitcher.plan(forWindowsOf: candidate.id) else {
             return base.activate(candidate)
         }
@@ -115,20 +127,32 @@ final class SpaceAwareActivator: AppActivating {
         }
         Log.activation.info("Instant Space switch: \(plan.move.steps) step(s) \(plan.move.direction == .right ? "right" : "left", privacy: .public) for \(candidate.name, privacy: .public)")
 
-        let base = self.base
-        waiter = SpaceChangeWaiter(expectedChanges: plan.move.steps, timeout: 0.4) {
-            base.activate(candidate)
+        waiter = SpaceChangeWaiter(expectedChanges: plan.move.steps, timeout: 0.4) { [weak self] in
+            guard let self else { return }
+            self.waiter = nil
+            if let next = self.queued {
+                // The user moved on while the Space was changing; this target is stale.
+                self.queued = nil
+                self.activateNow(next)
+            } else {
+                self.base.activate(candidate)
+            }
         }
         return true
     }
 }
 
-/// Runs a completion after `expectedChanges` active-Space notifications, or after
-/// `timeout`, whichever comes first. Cancelling drops the completion.
+/// Runs a completion once the window server has reported the expected active-Space
+/// changes, or shortly after the first one if the rest are coalesced, or after `timeout`
+/// if none arrive. Cancelling drops the completion.
 private final class SpaceChangeWaiter {
     private var observer: NSObjectProtocol?
     private var remaining: Int
     private var completion: (() -> Void)?
+    private var settle: DispatchWorkItem?
+    /// How long to wait for further hops after one is reported. Hops in a burst arrive
+    /// within a few milliseconds of each other; well under the normal activation latency.
+    private static let settleInterval: TimeInterval = 0.08
 
     init(expectedChanges: Int, timeout: TimeInterval, completion: @escaping () -> Void) {
         self.remaining = max(1, expectedChanges)
@@ -146,32 +170,36 @@ private final class SpaceChangeWaiter {
     }
 
     deinit {
-        removeObserver()
+        cancel()
     }
 
     func cancel() {
         completion = nil
-        removeObserver()
+        settle?.cancel()
+        settle = nil
+        if let observer {
+            NSWorkspace.shared.notificationCenter.removeObserver(observer)
+            self.observer = nil
+        }
     }
 
     private func noteChange() {
         remaining -= 1
         if remaining <= 0 {
             finish()
+            return
         }
+        // More hops expected. If they were coalesced into one notification they will never
+        // come, so finish after a short settle instead of waiting for the full timeout.
+        settle?.cancel()
+        let item = DispatchWorkItem { [weak self] in self?.finish() }
+        settle = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.settleInterval, execute: item)
     }
 
     private func finish() {
         guard let completion else { return }
-        self.completion = nil
-        removeObserver()
+        cancel()
         completion()
-    }
-
-    private func removeObserver() {
-        if let observer {
-            NSWorkspace.shared.notificationCenter.removeObserver(observer)
-            self.observer = nil
-        }
     }
 }
