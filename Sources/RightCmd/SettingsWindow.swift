@@ -113,6 +113,7 @@ struct SettingsView: View {
             }
 
             Section {
+                Toggle("Include Finder", isOn: $model.settings.includeFinder)
                 TextEditor(text: $exclusionsDraft)
                     .font(.body.monospaced())
                     .frame(minHeight: 80)
@@ -122,7 +123,7 @@ struct SettingsView: View {
             } header: {
                 Text("Excluded apps")
             } footer: {
-                Text("One pattern per line, matched against the app name or bundle identifier. “*” matches anything, e.g. com.apple.* or *Helper.")
+                Text("Finder is left out unless included: it is always running and would otherwise claim “F”. Below, one pattern per line, matched against the app name or bundle identifier. “*” matches anything, e.g. com.apple.* or *Helper.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -155,7 +156,7 @@ struct SettingsView: View {
 
 /// Owns the single settings window; reopening brings the existing one forward.
 final class SettingsWindowController {
-    static let contentSize = NSSize(width: 480, height: 720)
+    static let contentSize = NSSize(width: 480, height: 760)
 
     private let model: SettingsModel
     private var window: NSWindow?

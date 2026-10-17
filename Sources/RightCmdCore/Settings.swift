@@ -35,6 +35,10 @@ public struct Settings: Codable, Equatable, Sendable {
     public var iconColors: IconColors = .default
     /// Wildcard patterns matched against app names and bundle identifiers.
     public var excludedPatterns: [String] = []
+    /// Finder is always running and always wins "F", so it is left out unless asked for.
+    /// Kept separate from `excludedPatterns` so the default can change without migrating
+    /// user data and so re-enabling it is a single switch.
+    public var includeFinder: Bool = false
 
     public init() {}
 
@@ -44,8 +48,16 @@ public struct Settings: Codable, Equatable, Sendable {
         MatchOptions(wordPrefixes: matchWordPrefixes, initials: matchInitials)
     }
 
+    /// Bundle identifiers excluded unless the matching `include…` setting is on.
+    public static let finderBundleIdentifier = "com.apple.finder"
+
+    /// The user's patterns plus any built-in exclusions that are currently in force.
     public var exclusionList: ExclusionList {
-        ExclusionList(patterns: excludedPatterns)
+        var patterns = excludedPatterns
+        if !includeFinder {
+            patterns.append(Self.finderBundleIdentifier)
+        }
+        return ExclusionList(patterns: patterns)
     }
 
     // MARK: Codable
@@ -55,7 +67,8 @@ public struct Settings: Codable, Equatable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case switchMode, matchWordPrefixes, matchInitials, skipFrontmostApp
-        case commitOnUniqueMatch, showOverlay, overlayPosition, tintMenuBarIcon, iconColors, excludedPatterns
+        case commitOnUniqueMatch, showOverlay, overlayPosition, tintMenuBarIcon, iconColors
+        case excludedPatterns, includeFinder
     }
 
     public init(from decoder: Decoder) throws {
@@ -71,6 +84,7 @@ public struct Settings: Codable, Equatable, Sendable {
         tintMenuBarIcon = (try? c.decodeIfPresent(Bool.self, forKey: .tintMenuBarIcon)) ?? defaults.tintMenuBarIcon
         iconColors = (try? c.decodeIfPresent(IconColors.self, forKey: .iconColors)) ?? defaults.iconColors
         excludedPatterns = (try? c.decodeIfPresent([String].self, forKey: .excludedPatterns)) ?? defaults.excludedPatterns
+        includeFinder = (try? c.decodeIfPresent(Bool.self, forKey: .includeFinder)) ?? defaults.includeFinder
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -85,6 +99,7 @@ public struct Settings: Codable, Equatable, Sendable {
         try c.encode(tintMenuBarIcon, forKey: .tintMenuBarIcon)
         try c.encode(iconColors, forKey: .iconColors)
         try c.encode(excludedPatterns, forKey: .excludedPatterns)
+        try c.encode(includeFinder, forKey: .includeFinder)
     }
 }
 

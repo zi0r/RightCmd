@@ -177,6 +177,37 @@ final class SettingsTests: XCTestCase {
         XCTAssertTrue(s.tintMenuBarIcon)
         XCTAssertEqual(s.iconColors, .default)
         XCTAssertEqual(s.excludedPatterns, [])
+        XCTAssertFalse(s.includeFinder)
+    }
+
+    func testFinderIsExcludedByDefault() {
+        let list = Settings.default.exclusionList
+        XCTAssertTrue(list.excludes(Fixtures.finder))
+        XCTAssertFalse(list.excludes(Fixtures.safari))
+        XCTAssertEqual(AppMatcher.matches(for: "f", in: list.filter(Fixtures.all)), [])
+    }
+
+    func testIncludeFinderSettingRestoresIt() {
+        var s = Settings()
+        s.includeFinder = true
+        XCTAssertFalse(s.exclusionList.excludes(Fixtures.finder))
+        XCTAssertEqual(AppMatcher.matches(for: "f", in: s.exclusionList.filter(Fixtures.all)), [Fixtures.finder])
+    }
+
+    func testBuiltInExclusionDoesNotLeakIntoUserPatterns() {
+        let s = Settings()
+        XCTAssertEqual(s.excludedPatterns, [], "the built-in rule is not stored as a user pattern")
+        XCTAssertTrue(s.exclusionList.excludes(Fixtures.finder))
+    }
+
+    func testUserPatternsStillApplyAlongsideBuiltIns() {
+        var s = Settings()
+        s.excludedPatterns = ["Slack"]
+        XCTAssertTrue(s.exclusionList.excludes(Fixtures.slack))
+        XCTAssertTrue(s.exclusionList.excludes(Fixtures.finder))
+        s.includeFinder = true
+        XCTAssertTrue(s.exclusionList.excludes(Fixtures.slack))
+        XCTAssertFalse(s.exclusionList.excludes(Fixtures.finder))
     }
 
     func testRoundTrip() throws {
@@ -188,6 +219,7 @@ final class SettingsTests: XCTestCase {
         s.iconColors.matched = SRGBColor(hex: "#123456")!
         s.overlayPosition = .top
         s.excludedPatterns = ["com.apple.*", "Slack"]
+        s.includeFinder = true
         let data = try JSONEncoder().encode(s)
         let decoded = try JSONDecoder().decode(Settings.self, from: data)
         XCTAssertEqual(decoded, s)

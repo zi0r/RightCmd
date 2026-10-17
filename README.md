@@ -68,7 +68,7 @@ macOS will ask for **Accessibility** permission. RightCmd needs it to observe ke
 
 Within a tier results are alphabetical. Type more letters, or use the arrow keys, to disambiguate.
 
-**Settings** (menu bar › Settings…) let you change the mode, overlay position, icon tint and colours, matching strategies, exclude apps by name or bundle id with wildcards (`com.apple.*`), prefer a *different* app when the best match is already in front, and enable launch at login.
+**Settings** (menu bar › Settings…) let you change the mode, overlay position, icon tint and colours, matching strategies, exclude apps by name or bundle id with wildcards (`com.apple.*`), opt Finder back in, prefer a *different* app when the best match is already in front, and enable launch at login.
 
 ### Things to know
 
@@ -134,7 +134,7 @@ Logs: `log stream --predicate 'subsystem == "com.rightcmd.app"' --level debug`
 
 **Right ⌘ isn't detected with Karabiner‑Elements or another remapper.** RightCmd identifies the key by its key code (0x36) and, when present, the right‑⌘ device flag. Make sure the remapper emits a genuine right command key rather than a generic ⌘.
 
-**The app I want is excluded.** Only apps with a Dock presence (regular activation policy) are offered, the same set as ⌘‑Tab. Check Settings › Excluded apps as well.
+**The app I want is excluded.** Only apps with a Dock presence (regular activation policy) are offered, the same set as ⌘‑Tab. Finder is left out by default because it is always running and would otherwise claim `F`; switch on *Include Finder* in Settings › Excluded apps if you want it. Check your own exclusion patterns there as well.
 
 ## License
 
