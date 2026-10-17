@@ -37,6 +37,25 @@ final class KeyClassifierTests: XCTestCase {
     }
 }
 
+final class KeyPassThroughTests: XCTestCase {
+    func testOffByDefaultPassesNothing() {
+        let settings = Settings()
+        XCTAssertFalse(KeyPassThrough.passes(keyCode: KeyCode.leftArrow, settings: settings))
+        XCTAssertFalse(KeyPassThrough.passes(keyCode: KeyCode.rightArrow, settings: settings))
+    }
+
+    func testOnlyLeftAndRightPassWhenEnabled() {
+        var settings = Settings()
+        settings.passThroughLeftRightArrows = true
+        XCTAssertTrue(KeyPassThrough.passes(keyCode: KeyCode.leftArrow, settings: settings))
+        XCTAssertTrue(KeyPassThrough.passes(keyCode: KeyCode.rightArrow, settings: settings))
+        XCTAssertFalse(KeyPassThrough.passes(keyCode: KeyCode.upArrow, settings: settings), "↑ still cycles")
+        XCTAssertFalse(KeyPassThrough.passes(keyCode: KeyCode.downArrow, settings: settings), "↓ still cycles")
+        XCTAssertFalse(KeyPassThrough.passes(keyCode: 1, settings: settings), "letters are still ours")
+        XCTAssertFalse(KeyPassThrough.passes(keyCode: KeyCode.escape, settings: settings))
+    }
+}
+
 final class ActivatorKeyTests: XCTestCase {
     private let rightCmd = KeyCode.rightCommand
     private let leftCmd = KeyCode.command
@@ -174,6 +193,7 @@ final class SettingsTests: XCTestCase {
         XCTAssertTrue(s.commitOnUniqueMatch)
         XCTAssertFalse(s.movePointerToWindow)
         XCTAssertFalse(s.instantSpaceSwitching)
+        XCTAssertFalse(s.passThroughLeftRightArrows)
         XCTAssertTrue(s.showOverlay)
         XCTAssertEqual(s.overlayPosition, .center)
         XCTAssertTrue(s.tintMenuBarIcon)
@@ -221,6 +241,7 @@ final class SettingsTests: XCTestCase {
         s.commitOnUniqueMatch = false
         s.movePointerToWindow = true
         s.instantSpaceSwitching = true
+        s.passThroughLeftRightArrows = true
         s.tintMenuBarIcon = false
         s.iconColors.matched = SRGBColor(hex: "#123456")!
         s.overlayPosition = .top

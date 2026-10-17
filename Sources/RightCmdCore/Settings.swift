@@ -33,6 +33,9 @@ public struct Settings: Codable, Equatable, Sendable {
     /// animation (the InstantSpaceSwitcher technique). Off by default: it relies on
     /// private window-server APIs.
     public var instantSpaceSwitching: Bool = false
+    /// Let ← and → pass through to the system while right ⌘ is held, for people who bind
+    /// ⌘← / ⌘→ to Mission Control's "move left/right a Space". ↑ and ↓ keep cycling matches.
+    public var passThroughLeftRightArrows: Bool = false
     public var showOverlay: Bool = true
     public var overlayPosition: OverlayPosition = .center
     /// Tint the menu bar icon while right ⌘ is held: `iconColors.listening` until something
@@ -80,7 +83,7 @@ public struct Settings: Codable, Equatable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case switchMode, matchWordPrefixes, matchInitials, skipFrontmostApp
-        case commitOnUniqueMatch, movePointerToWindow, instantSpaceSwitching
+        case commitOnUniqueMatch, movePointerToWindow, instantSpaceSwitching, passThroughLeftRightArrows
         case showOverlay, overlayPosition, tintMenuBarIcon, iconColors
         case excludedPatterns, includeFinder, priorityPatterns
     }
@@ -95,6 +98,7 @@ public struct Settings: Codable, Equatable, Sendable {
         commitOnUniqueMatch = (try? c.decodeIfPresent(Bool.self, forKey: .commitOnUniqueMatch)) ?? defaults.commitOnUniqueMatch
         movePointerToWindow = (try? c.decodeIfPresent(Bool.self, forKey: .movePointerToWindow)) ?? defaults.movePointerToWindow
         instantSpaceSwitching = (try? c.decodeIfPresent(Bool.self, forKey: .instantSpaceSwitching)) ?? defaults.instantSpaceSwitching
+        passThroughLeftRightArrows = (try? c.decodeIfPresent(Bool.self, forKey: .passThroughLeftRightArrows)) ?? defaults.passThroughLeftRightArrows
         showOverlay = (try? c.decodeIfPresent(Bool.self, forKey: .showOverlay)) ?? defaults.showOverlay
         overlayPosition = (try? c.decodeIfPresent(OverlayPosition.self, forKey: .overlayPosition)) ?? defaults.overlayPosition
         tintMenuBarIcon = (try? c.decodeIfPresent(Bool.self, forKey: .tintMenuBarIcon)) ?? defaults.tintMenuBarIcon
@@ -113,6 +117,7 @@ public struct Settings: Codable, Equatable, Sendable {
         try c.encode(commitOnUniqueMatch, forKey: .commitOnUniqueMatch)
         try c.encode(movePointerToWindow, forKey: .movePointerToWindow)
         try c.encode(instantSpaceSwitching, forKey: .instantSpaceSwitching)
+        try c.encode(passThroughLeftRightArrows, forKey: .passThroughLeftRightArrows)
         try c.encode(showOverlay, forKey: .showOverlay)
         try c.encode(overlayPosition, forKey: .overlayPosition)
         try c.encode(tintMenuBarIcon, forKey: .tintMenuBarIcon)

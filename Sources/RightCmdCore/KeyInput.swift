@@ -76,6 +76,17 @@ public enum KeyClassifier {
     }
 }
 
+/// Keys that are handed to the system untouched while right ⌘ is held.
+public enum KeyPassThrough {
+    /// True if a key event with this key code should be passed through rather than
+    /// swallowed and interpreted, given the settings. Applies to key down, key up and
+    /// auto-repeat alike, so the system sees a complete, ordinary key press.
+    public static func passes(keyCode: Int64, settings: Settings) -> Bool {
+        guard settings.passThroughLeftRightArrows else { return false }
+        return keyCode == KeyCode.leftArrow || keyCode == KeyCode.rightArrow
+    }
+}
+
 /// Modifier flags as carried by `CGEventFlags`, including the undocumented-but-stable
 /// device-specific bits from IOKit's `NX_DEVICE*KEYMASK` that distinguish left from right keys.
 public struct ModifierFlags: OptionSet, Sendable {

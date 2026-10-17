@@ -173,6 +173,8 @@ struct GeneralPane: View {
                 Toggle("Prefer another app when the best match is already in front", isOn: $model.settings.skipFrontmostApp)
                 Toggle("Move the pointer to the window you switch to", isOn: $model.settings.movePointerToWindow)
                 Hint("Happens once per hold, as soon as the switch is settled; not if the pointer is already in that window, and not after Escape.")
+                Toggle("Let ← and → reach the system", isOn: $model.settings.passThroughLeftRightArrows)
+                Hint("For ⌘← / ⌘→ Space shortcuts bound in System Settings › Keyboard › Shortcuts › Mission Control. ↑ and ↓ still cycle between matches.")
                 Toggle("Switch Spaces instantly", isOn: $model.settings.instantSpaceSwitching)
                     .disabled(!SpaceSwitcher.isAvailable)
                 Hint(SpaceSwitcher.isAvailable
