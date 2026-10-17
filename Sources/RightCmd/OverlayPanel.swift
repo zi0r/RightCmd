@@ -57,7 +57,11 @@ struct OverlayView: View {
         let visible = Array(state.matches.prefix(maxVisibleMatches).enumerated())
         return VStack(alignment: .leading, spacing: 4) {
             ForEach(visible, id: \.element.id) { item in
-                matchRow(item.element, isSelected: item.offset == state.selectedIndex)
+                matchRow(
+                    item.element,
+                    isSelected: item.offset == state.selectedIndex,
+                    isPrioritized: state.prioritizedIDs.contains(item.element.id)
+                )
             }
             if state.matches.count > maxVisibleMatches {
                 Text("+\(state.matches.count - maxVisibleMatches) more")
@@ -68,7 +72,7 @@ struct OverlayView: View {
         }
     }
 
-    private func matchRow(_ app: AppCandidate, isSelected: Bool) -> some View {
+    private func matchRow(_ app: AppCandidate, isSelected: Bool, isPrioritized: Bool) -> some View {
         HStack(spacing: 10) {
             if let image = icon(app) {
                 Image(nsImage: image)
@@ -83,6 +87,12 @@ struct OverlayView: View {
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .frame(maxWidth: 360, alignment: .leading)
+            if isPrioritized {
+                Image(systemName: "pin.fill")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .help("On your priority list")
+            }
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 10)

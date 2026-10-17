@@ -178,6 +178,8 @@ final class SettingsTests: XCTestCase {
         XCTAssertEqual(s.iconColors, .default)
         XCTAssertEqual(s.excludedPatterns, [])
         XCTAssertFalse(s.includeFinder)
+        XCTAssertEqual(s.priorityPatterns, [])
+        XCTAssertTrue(s.priorityList.isEmpty)
     }
 
     func testFinderIsExcludedByDefault() {
@@ -219,6 +221,7 @@ final class SettingsTests: XCTestCase {
         s.iconColors.matched = SRGBColor(hex: "#123456")!
         s.overlayPosition = .top
         s.excludedPatterns = ["com.apple.*", "Slack"]
+        s.priorityPatterns = ["Xcode", "com.google.*"]
         s.includeFinder = true
         let data = try JSONEncoder().encode(s)
         let decoded = try JSONDecoder().decode(Settings.self, from: data)
@@ -256,7 +259,8 @@ final class SettingsTests: XCTestCase {
     func testMatchOptionsReflectSettings() {
         var s = Settings()
         s.matchWordPrefixes = false
-        XCTAssertEqual(s.matchOptions, MatchOptions(wordPrefixes: false, initials: true))
+        s.priorityPatterns = ["Slack"]
+        XCTAssertEqual(s.matchOptions, MatchOptions(wordPrefixes: false, initials: true, priority: PriorityList(patterns: ["Slack"])))
     }
 }
 

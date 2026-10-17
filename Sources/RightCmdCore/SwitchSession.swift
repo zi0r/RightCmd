@@ -11,12 +11,21 @@ public struct OverlayState: Equatable, Sendable {
     /// True when macOS secure input is on (e.g. a password field is focused), which stops
     /// the event tap from seeing key presses. Shown so the user knows why typing does nothing.
     public var secureInputActive: Bool
+    /// The ids of matches that are on the user's priority list, so the overlay can mark them.
+    public var prioritizedIDs: Set<Int32>
 
-    public init(query: String, matches: [AppCandidate], selectedIndex: Int?, secureInputActive: Bool) {
+    public init(
+        query: String,
+        matches: [AppCandidate],
+        selectedIndex: Int?,
+        secureInputActive: Bool,
+        prioritizedIDs: Set<Int32> = []
+    ) {
         self.query = query
         self.matches = matches
         self.selectedIndex = selectedIndex
         self.secureInputActive = secureInputActive
+        self.prioritizedIDs = prioritizedIDs
     }
 
     public var selected: AppCandidate? {
@@ -83,6 +92,7 @@ public final class SwitchSession {
     private var context = SessionContext(candidates: [])
     private var query = ""
     private var matches: [AppCandidate] = []
+    private var prioritizedIDs: Set<Int32> = []
     private var selectedIndex: Int?
     private var overlayVisible = false
     /// The app most recently activated in this session, to avoid re-activating it.
@@ -152,6 +162,7 @@ public final class SwitchSession {
         phase = .idle
         query = ""
         matches = []
+        prioritizedIDs = []
         selectedIndex = nil
         return actions
     }
@@ -161,6 +172,7 @@ public final class SwitchSession {
         phase = .idle
         query = ""
         matches = []
+        prioritizedIDs = []
         selectedIndex = nil
         lastActivated = nil
         return actions
@@ -243,7 +255,9 @@ public final class SwitchSession {
     // MARK: - Matching
 
     private func recomputeMatches() {
-        matches = AppMatcher.matches(for: query, in: context.candidates, options: settings.matchOptions)
+        let ranked = AppMatcher.rankedMatches(for: query, in: context.candidates, options: settings.matchOptions)
+        matches = ranked.map(\.candidate)
+        prioritizedIDs = Set(ranked.filter { $0.priorityRank != nil }.map(\.candidate.id))
         guard !matches.isEmpty else {
             selectedIndex = nil
             return
@@ -283,7 +297,8 @@ public final class SwitchSession {
             query: query,
             matches: matches,
             selectedIndex: selectedIndex,
-            secureInputActive: context.secureInputActive
+            secureInputActive: context.secureInputActive,
+            prioritizedIDs: prioritizedIDs
         )
         return [.showOverlay(state)]
     }

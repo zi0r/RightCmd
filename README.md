@@ -68,7 +68,9 @@ macOS will ask for **Accessibility** permission. RightCmd needs it to observe ke
 
 Within a tier results are alphabetical. Type more letters, or use the arrow keys, to disambiguate.
 
-**Settings** (menu bar › Settings…) let you change the mode, overlay position, icon tint and colours, matching strategies, exclude apps by name or bundle id with wildcards (`com.apple.*`), opt Finder back in, prefer a *different* app when the best match is already in front, and enable launch at login.
+**Priority apps** (Settings › Priority apps) let you put your own apps first. Anything on the list that matches what you typed outranks every other match, in list order — so with Slack at the top, `S` goes to Slack even though Safari sorts first alphabetically, and with Chrome listed, `C` prefers Chrome over an app whose *name* starts with "C". Priority never adds an app that doesn't match. Add apps from the running-app menu (stored by bundle id, so renames and localisation don't matter) or type a name/bundle‑id pattern; reorder with the arrows. Prioritised matches show a small pin in the overlay.
+
+**Settings** (menu bar › Settings…) let you change the mode, overlay position, icon tint and colours, matching strategies, exclude apps by name or bundle id with wildcards (`com.apple.*`), opt Finder back in, keep an ordered list of priority apps, prefer a *different* app when the best match is already in front, and enable launch at login.
 
 ### Things to know
 

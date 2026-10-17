@@ -35,6 +35,8 @@ public struct Settings: Codable, Equatable, Sendable {
     public var iconColors: IconColors = .default
     /// Wildcard patterns matched against app names and bundle identifiers.
     public var excludedPatterns: [String] = []
+    /// Apps that outrank all other matches, highest priority first. Same pattern syntax.
+    public var priorityPatterns: [String] = []
     /// Finder is always running and always wins "F", so it is left out unless asked for.
     /// Kept separate from `excludedPatterns` so the default can change without migrating
     /// user data and so re-enabling it is a single switch.
@@ -45,7 +47,11 @@ public struct Settings: Codable, Equatable, Sendable {
     public static let `default` = Settings()
 
     public var matchOptions: MatchOptions {
-        MatchOptions(wordPrefixes: matchWordPrefixes, initials: matchInitials)
+        MatchOptions(wordPrefixes: matchWordPrefixes, initials: matchInitials, priority: priorityList)
+    }
+
+    public var priorityList: PriorityList {
+        PriorityList(patterns: priorityPatterns)
     }
 
     /// Bundle identifiers excluded unless the matching `include…` setting is on.
@@ -68,7 +74,7 @@ public struct Settings: Codable, Equatable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case switchMode, matchWordPrefixes, matchInitials, skipFrontmostApp
         case commitOnUniqueMatch, showOverlay, overlayPosition, tintMenuBarIcon, iconColors
-        case excludedPatterns, includeFinder
+        case excludedPatterns, includeFinder, priorityPatterns
     }
 
     public init(from decoder: Decoder) throws {
@@ -85,6 +91,7 @@ public struct Settings: Codable, Equatable, Sendable {
         iconColors = (try? c.decodeIfPresent(IconColors.self, forKey: .iconColors)) ?? defaults.iconColors
         excludedPatterns = (try? c.decodeIfPresent([String].self, forKey: .excludedPatterns)) ?? defaults.excludedPatterns
         includeFinder = (try? c.decodeIfPresent(Bool.self, forKey: .includeFinder)) ?? defaults.includeFinder
+        priorityPatterns = (try? c.decodeIfPresent([String].self, forKey: .priorityPatterns)) ?? defaults.priorityPatterns
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -100,6 +107,7 @@ public struct Settings: Codable, Equatable, Sendable {
         try c.encode(iconColors, forKey: .iconColors)
         try c.encode(excludedPatterns, forKey: .excludedPatterns)
         try c.encode(includeFinder, forKey: .includeFinder)
+        try c.encode(priorityPatterns, forKey: .priorityPatterns)
     }
 }
 

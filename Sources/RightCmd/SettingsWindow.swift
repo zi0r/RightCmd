@@ -22,8 +22,12 @@ final class SettingsModel: ObservableObject {
         }
     }
     @Published var launchAtLoginError: String?
+    /// Running apps offered by the "Add Running App" menu, refreshed when the window opens.
+    @Published var runningApps: [AppCandidate] = []
+    @Published var newPriorityPattern: String = ""
 
     private let store: SettingsStore
+    private let appProvider = WorkspaceAppProvider()
 
     init(store: SettingsStore) {
         self.store = store
@@ -37,6 +41,54 @@ final class SettingsModel: ObservableObject {
             settings = store.settings
         }
         launchAtLogin = LaunchAtLogin.isEnabled
+        runningApps = appProvider.candidates(excluding: .empty)
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    // MARK: Priority list editing
+
+    /// Adds an app by bundle identifier (stable across renames and localisation), or by
+    /// name when it has none.
+    func addPriority(app: AppCandidate) {
+        addPriority(pattern: app.bundleIdentifier ?? app.name)
+    }
+
+    func addPriority(pattern raw: String) {
+        let pattern = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !pattern.isEmpty else { return }
+        guard !settings.priorityPatterns.contains(where: { $0.caseInsensitiveCompare(pattern) == .orderedSame }) else { return }
+        settings.priorityPatterns.append(pattern)
+    }
+
+    func addTypedPriority() {
+        addPriority(pattern: newPriorityPattern)
+        newPriorityPattern = ""
+    }
+
+    func movePriority(at index: Int, by delta: Int) {
+        let target = index + delta
+        guard settings.priorityPatterns.indices.contains(index),
+              settings.priorityPatterns.indices.contains(target) else { return }
+        settings.priorityPatterns.swapAt(index, target)
+    }
+
+    func removePriority(at index: Int) {
+        guard settings.priorityPatterns.indices.contains(index) else { return }
+        settings.priorityPatterns.remove(at: index)
+    }
+
+    /// A friendly label for a pattern: the running app's name when the pattern is its
+    /// bundle identifier, otherwise the pattern itself.
+    func displayName(forPriorityPattern pattern: String) -> String {
+        if let app = runningApps.first(where: { $0.bundleIdentifier?.caseInsensitiveCompare(pattern) == .orderedSame }) {
+            return app.name
+        }
+        return pattern
+    }
+
+    /// Whether the label differs from the raw pattern (so the pattern is worth showing too).
+    func isBundleIdentifierPattern(_ pattern: String) -> Bool {
+        displayName(forPriorityPattern: pattern) != pattern
     }
 
     /// A `ColorPicker` binding for one of the icon colours. A picker can hand back a colour
@@ -82,6 +134,35 @@ struct SettingsView: View {
             Section("Matching") {
                 Toggle("Match the start of any word (“c” finds Google Chrome)", isOn: $model.settings.matchWordPrefixes)
                 Toggle("Match initials (“vsc” finds Visual Studio Code)", isOn: $model.settings.matchInitials)
+            }
+
+            Section {
+                if model.settings.priorityPatterns.isEmpty {
+                    Text("No priority apps. Matches are ordered by match quality, then name.")
+                        .foregroundStyle(.secondary)
+                }
+                ForEach(Array(model.settings.priorityPatterns.enumerated()), id: \.offset) { item in
+                    priorityRow(index: item.offset, pattern: item.element)
+                }
+                HStack {
+                    Menu("Add Running App") {
+                        ForEach(model.runningApps, id: \.id) { app in
+                            Button(app.name) { model.addPriority(app: app) }
+                        }
+                    }
+                    .fixedSize()
+                    TextField("or a name / bundle id pattern", text: $model.newPriorityPattern)
+                        .textFieldStyle(.roundedBorder)
+                        .onSubmit { model.addTypedPriority() }
+                    Button("Add") { model.addTypedPriority() }
+                        .disabled(model.newPriorityPattern.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+            } header: {
+                Text("Priority apps")
+            } footer: {
+                Text("Apps on this list outrank every other match, top first. They still have to match what you type; priority only settles the order. Patterns use the same syntax as exclusions.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Section("Overlay") {
@@ -144,9 +225,10 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         // A grouped Form is scroll-backed and has no intrinsic height, so the window must be
-        // given one explicitly or it collapses to its title bar.
-        .frame(width: SettingsWindowController.contentSize.width,
-               height: SettingsWindowController.contentSize.height)
+        // given one explicitly or it collapses to its title bar. Height is a minimum so the
+        // window can be resized taller; the form scrolls when shorter than its content.
+        .frame(width: SettingsWindowController.contentSize.width)
+        .frame(minHeight: SettingsWindowController.contentSize.height, maxHeight: .infinity)
         .onAppear {
             model.refresh()
             exclusionsDraft = model.excludedPatternsText
@@ -154,9 +236,38 @@ struct SettingsView: View {
     }
 }
 
+extension SettingsView {
+    @ViewBuilder
+    fileprivate func priorityRow(index: Int, pattern: String) -> some View {
+        let count = model.settings.priorityPatterns.count
+        HStack(spacing: 8) {
+            Text("\(index + 1).")
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+                .frame(width: 24, alignment: .trailing)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(model.displayName(forPriorityPattern: pattern))
+                if model.isBundleIdentifierPattern(pattern) {
+                    Text(pattern).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            Spacer()
+            Button { model.movePriority(at: index, by: -1) } label: { Image(systemName: "chevron.up") }
+                .disabled(index == 0)
+                .help("Move up")
+            Button { model.movePriority(at: index, by: 1) } label: { Image(systemName: "chevron.down") }
+                .disabled(index == count - 1)
+                .help("Move down")
+            Button(role: .destructive) { model.removePriority(at: index) } label: { Image(systemName: "minus.circle") }
+                .help("Remove")
+        }
+        .buttonStyle(.borderless)
+    }
+}
+
 /// Owns the single settings window; reopening brings the existing one forward.
 final class SettingsWindowController {
-    static let contentSize = NSSize(width: 480, height: 760)
+    static let contentSize = NSSize(width: 480, height: 820)
 
     private let model: SettingsModel
     private var window: NSWindow?
@@ -171,8 +282,10 @@ final class SettingsWindowController {
             hosting.preferredContentSize = Self.contentSize
             let window = NSWindow(contentViewController: hosting)
             window.title = "RightCmd Settings"
-            window.styleMask = [.titled, .closable, .miniaturizable]
+            window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
             window.setContentSize(Self.contentSize)
+            window.contentMinSize = Self.contentSize
+            window.contentMaxSize = NSSize(width: Self.contentSize.width, height: .greatestFiniteMagnitude)
             window.isReleasedWhenClosed = false
             window.center()
             self.window = window

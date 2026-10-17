@@ -8,10 +8,13 @@ public struct MatchOptions: Equatable, Sendable {
     /// Also match the query against the initials of multi-word names,
     /// so "vsc" finds "Visual Studio Code".
     public var initials: Bool
+    /// Apps that outrank all other matches, in order. See `PriorityList`.
+    public var priority: PriorityList
 
-    public init(wordPrefixes: Bool = true, initials: Bool = true) {
+    public init(wordPrefixes: Bool = true, initials: Bool = true, priority: PriorityList = .empty) {
         self.wordPrefixes = wordPrefixes
         self.initials = initials
+        self.priority = priority
     }
 }
 
@@ -33,6 +36,8 @@ public enum MatchTier: Int, Comparable, Sendable {
 public struct RankedMatch: Equatable, Sendable {
     public let candidate: AppCandidate
     public let tier: MatchTier
+    /// Position in the user's priority list, or nil if not prioritised.
+    public let priorityRank: Int?
 }
 
 /// Ranks running applications against the letters typed while the activator key is held.
@@ -55,6 +60,7 @@ public enum AppMatcher {
         struct Scored {
             let candidate: AppCandidate
             let tier: MatchTier
+            let priorityRank: Int?
             let foldedName: String
         }
 
@@ -65,17 +71,32 @@ public enum AppMatcher {
             guard let tier = tier(forFoldedName: foldedName, query: foldedQuery, options: options) else {
                 continue
             }
-            scored.append(Scored(candidate: candidate, tier: tier, foldedName: foldedName))
+            scored.append(Scored(
+                candidate: candidate,
+                tier: tier,
+                priorityRank: options.priority.rank(of: candidate),
+                foldedName: foldedName
+            ))
         }
 
         scored.sort { lhs, rhs in
+            switch (lhs.priorityRank, rhs.priorityRank) {
+            case let (l?, r?) where l != r:
+                return l < r
+            case (.some, .none):
+                return true
+            case (.none, .some):
+                return false
+            default:
+                break
+            }
             if lhs.tier != rhs.tier { return lhs.tier < rhs.tier }
             if lhs.foldedName != rhs.foldedName { return lhs.foldedName < rhs.foldedName }
             if lhs.candidate.name != rhs.candidate.name { return lhs.candidate.name < rhs.candidate.name }
             return lhs.candidate.id < rhs.candidate.id
         }
 
-        return scored.map { RankedMatch(candidate: $0.candidate, tier: $0.tier) }
+        return scored.map { RankedMatch(candidate: $0.candidate, tier: $0.tier, priorityRank: $0.priorityRank) }
     }
 
     /// Convenience: the matching candidates only, best first.
