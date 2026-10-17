@@ -28,6 +28,11 @@ public struct Settings: Codable, Equatable, Sendable {
     public var commitOnUniqueMatch: Bool = true
     public var showOverlay: Bool = true
     public var overlayPosition: OverlayPosition = .center
+    /// Tint the menu bar icon while right ⌘ is held: `iconColors.listening` until something
+    /// is typed, then `matched` or `noMatch`. A glanceable confirmation that doesn't need
+    /// the overlay.
+    public var tintMenuBarIcon: Bool = true
+    public var iconColors: IconColors = .default
     /// Wildcard patterns matched against app names and bundle identifiers.
     public var excludedPatterns: [String] = []
 
@@ -50,7 +55,7 @@ public struct Settings: Codable, Equatable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case switchMode, matchWordPrefixes, matchInitials, skipFrontmostApp
-        case commitOnUniqueMatch, showOverlay, overlayPosition, excludedPatterns
+        case commitOnUniqueMatch, showOverlay, overlayPosition, tintMenuBarIcon, iconColors, excludedPatterns
     }
 
     public init(from decoder: Decoder) throws {
@@ -63,6 +68,8 @@ public struct Settings: Codable, Equatable, Sendable {
         commitOnUniqueMatch = (try? c.decodeIfPresent(Bool.self, forKey: .commitOnUniqueMatch)) ?? defaults.commitOnUniqueMatch
         showOverlay = (try? c.decodeIfPresent(Bool.self, forKey: .showOverlay)) ?? defaults.showOverlay
         overlayPosition = (try? c.decodeIfPresent(OverlayPosition.self, forKey: .overlayPosition)) ?? defaults.overlayPosition
+        tintMenuBarIcon = (try? c.decodeIfPresent(Bool.self, forKey: .tintMenuBarIcon)) ?? defaults.tintMenuBarIcon
+        iconColors = (try? c.decodeIfPresent(IconColors.self, forKey: .iconColors)) ?? defaults.iconColors
         excludedPatterns = (try? c.decodeIfPresent([String].self, forKey: .excludedPatterns)) ?? defaults.excludedPatterns
     }
 
@@ -75,6 +82,8 @@ public struct Settings: Codable, Equatable, Sendable {
         try c.encode(commitOnUniqueMatch, forKey: .commitOnUniqueMatch)
         try c.encode(showOverlay, forKey: .showOverlay)
         try c.encode(overlayPosition, forKey: .overlayPosition)
+        try c.encode(tintMenuBarIcon, forKey: .tintMenuBarIcon)
+        try c.encode(iconColors, forKey: .iconColors)
         try c.encode(excludedPatterns, forKey: .excludedPatterns)
     }
 }

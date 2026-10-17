@@ -174,6 +174,8 @@ final class SettingsTests: XCTestCase {
         XCTAssertTrue(s.commitOnUniqueMatch)
         XCTAssertTrue(s.showOverlay)
         XCTAssertEqual(s.overlayPosition, .center)
+        XCTAssertTrue(s.tintMenuBarIcon)
+        XCTAssertEqual(s.iconColors, .default)
         XCTAssertEqual(s.excludedPatterns, [])
     }
 
@@ -182,6 +184,8 @@ final class SettingsTests: XCTestCase {
         s.switchMode = .onRelease
         s.matchInitials = false
         s.commitOnUniqueMatch = false
+        s.tintMenuBarIcon = false
+        s.iconColors.matched = SRGBColor(hex: "#123456")!
         s.overlayPosition = .top
         s.excludedPatterns = ["com.apple.*", "Slack"]
         let data = try JSONEncoder().encode(s)
@@ -207,6 +211,14 @@ final class SettingsTests: XCTestCase {
     func testEmptyObjectDecodesToDefaults() throws {
         let decoded = try JSONDecoder().decode(Settings.self, from: "{}".data(using: .utf8)!)
         XCTAssertEqual(decoded, .default)
+    }
+
+    func testPartialIconColorsFallBackPerKey() throws {
+        let json = #"{"iconColors":{"matched":{"red":1,"green":0,"blue":0},"noMatch":"garbage"}}"#.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(Settings.self, from: json)
+        XCTAssertEqual(decoded.iconColors.matched, SRGBColor(red: 1, green: 0, blue: 0))
+        XCTAssertEqual(decoded.iconColors.listening, IconColors.default.listening)
+        XCTAssertEqual(decoded.iconColors.noMatch, IconColors.default.noMatch)
     }
 
     func testMatchOptionsReflectSettings() {
@@ -273,5 +285,46 @@ final class SettingsStoreTests: XCTestCase {
         store.resetToDefaults()
         XCTAssertEqual(store.settings, .default)
         XCTAssertEqual(SettingsStore(defaults: defaults, key: "test").settings, .default)
+    }
+}
+
+final class SRGBColorTests: XCTestCase {
+    func testHexRoundTrip() {
+        let color = SRGBColor(hex: "#30D158")!
+        XCTAssertEqual(color.hexString, "#30D158")
+        XCTAssertEqual(SRGBColor(hex: "30d158"), color)
+        XCTAssertEqual(SRGBColor(hex: "  #30D158\n"), color)
+    }
+
+    func testComponents() {
+        let color = SRGBColor(hex: "#FF8000")!
+        XCTAssertEqual(color.red, 1, accuracy: 0.001)
+        XCTAssertEqual(color.green, 128.0 / 255.0, accuracy: 0.001)
+        XCTAssertEqual(color.blue, 0, accuracy: 0.001)
+    }
+
+    func testInvalidHex() {
+        XCTAssertNil(SRGBColor(hex: ""))
+        XCTAssertNil(SRGBColor(hex: "#FFF"))
+        XCTAssertNil(SRGBColor(hex: "#GGGGGG"))
+        XCTAssertNil(SRGBColor(hex: "#FFFFFFFF"))
+    }
+
+    func testComponentsAreClamped() {
+        let color = SRGBColor(red: 2, green: -1, blue: .nan)
+        XCTAssertEqual(color, SRGBColor(red: 1, green: 0, blue: 0))
+        XCTAssertEqual(color.hexString, "#FF0000")
+    }
+
+    func testDefaultsAreTheSystemColours() {
+        XCTAssertEqual(IconColors.default.listening.hexString, "#0A84FF")
+        XCTAssertEqual(IconColors.default.matched.hexString, "#30D158")
+        XCTAssertEqual(IconColors.default.noMatch.hexString, "#FF453A")
+    }
+
+    func testCodableRoundTrip() throws {
+        let colors = IconColors(listening: SRGBColor(hex: "#111111")!, matched: SRGBColor(hex: "#222222")!, noMatch: SRGBColor(hex: "#333333")!)
+        let data = try JSONEncoder().encode(colors)
+        XCTAssertEqual(try JSONDecoder().decode(IconColors.self, from: data), colors)
     }
 }

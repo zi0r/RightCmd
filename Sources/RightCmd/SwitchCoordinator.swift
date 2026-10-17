@@ -4,6 +4,10 @@ import RightCmdCore
 /// Owns the event tap and routes its events through the core `SwitchSession`, carrying
 /// out the resulting actions (overlay updates, app activation). Main thread only.
 final class SwitchCoordinator {
+    /// Called whenever the menu bar icon should change. The Bool is `linger`: whether a
+    /// return to `.idle` may stay on the previous colour briefly (see `StatusMenuController.show`).
+    var onIconState: ((IconState, Bool) -> Void)?
+
     private let settingsStore: SettingsStore
     private let overlay: OverlayPresenting
     private let activator: AppActivating
@@ -70,6 +74,7 @@ final class SwitchCoordinator {
         stopWatchdog()
         activatorHeld = false
         perform(session.handle(.interrupted))
+        reportIconState(.idle, linger: false)
     }
 
     /// Apply new settings. The core session reads them live, so this also affects a
@@ -124,7 +129,14 @@ final class SwitchCoordinator {
             }
             let character = translator.character(forKeyCode: keyCode)
             let input = KeyClassifier.classify(keyCode: keyCode, character: character)
-            perform(session.handle(.key(input)))
+            // Sample before handling: a key that commits a unique match flips the session to
+            // finished, and it should still count as a hit.
+            let wasAccepting = session.isAcceptingKeys
+            let actions = session.handle(.key(input))
+            perform(actions)
+            if wasAccepting {
+                reportIconState(afterKey: input, actions: actions)
+            }
             return true
 
         case .keyUp(_, let flags):
@@ -141,6 +153,7 @@ final class SwitchCoordinator {
         activatorHeld = true
         Log.session.debug("Right ⌘ down")
         perform(session.handle(.activatorPressed))
+        reportIconState(.listening)
         startWatchdog()
     }
 
@@ -148,7 +161,13 @@ final class SwitchCoordinator {
         stopWatchdog()
         activatorHeld = false
         Log.session.debug("Right ⌘ up (\(reason, privacy: .public))")
-        perform(session.handle(.activatorReleased))
+        let actions = session.handle(.activatorReleased)
+        perform(actions)
+        if actions.contains(where: Self.isActivation) {
+            // On-release mode: the switch happens now, so show it before fading out.
+            reportIconState(.matched)
+        }
+        reportIconState(.idle, linger: true)
     }
 
     // MARK: Watchdog
@@ -176,6 +195,38 @@ final class SwitchCoordinator {
         let live = ModifierFlags(rawValue: CGEventSource.flagsState(.hidSystemState).rawValue)
         if !ActivatorKey.isRightCommandHeld(live) {
             releaseActivator(reason: "watchdog: HID state shows ⌘ up")
+        }
+    }
+
+    // MARK: Icon feedback
+
+    private static func isActivation(_ action: SessionAction) -> Bool {
+        if case .activate = action { return true }
+        return false
+    }
+
+    private func reportIconState(_ state: IconState, linger: Bool = true) {
+        // `.idle` always goes through so the icon can't stay tinted after the setting is
+        // switched off mid-session.
+        guard state == .idle || settingsStore.settings.tintMenuBarIcon else { return }
+        onIconState?(state, linger)
+    }
+
+    private func reportIconState(afterKey input: KeyInput, actions: [SessionAction]) {
+        if actions.contains(where: Self.isActivation) {
+            // Live switch or unique-match commit: a hit, whatever the key was.
+            reportIconState(.matched)
+            return
+        }
+        guard session.isAcceptingKeys else {
+            // Escape, or Return with nothing to switch to: the session is over.
+            reportIconState(.idle, linger: false)
+            return
+        }
+        if session.currentQuery.isEmpty {
+            reportIconState(.listening)
+        } else {
+            reportIconState(session.currentMatches.isEmpty ? .noMatch : .matched)
         }
     }
 

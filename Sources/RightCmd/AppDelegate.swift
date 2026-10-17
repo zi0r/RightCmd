@@ -45,6 +45,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             )
         }
         statusMenu.onToggleEnabled = { [weak self] in self?.toggleEnabled() }
+        coordinator.onIconState = { [weak self] state, linger in self?.statusMenu.show(state, linger: linger) }
         statusMenu.onOpenSettings = { [weak self] in self?.settingsWindow.show() }
         statusMenu.onQuit = { NSApp.terminate(nil) }
 

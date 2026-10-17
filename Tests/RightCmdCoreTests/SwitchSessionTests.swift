@@ -391,6 +391,27 @@ final class SwitchSessionTests: XCTestCase {
         XCTAssertEqual(contextCalls, 2)
     }
 
+    func testCurrentMatchesAndAcceptingKeysReflectState() {
+        let session = makeSession()
+        XCTAssertFalse(session.isAcceptingKeys)
+        XCTAssertEqual(session.currentMatches, [])
+
+        _ = session.handle(.activatorPressed)
+        XCTAssertTrue(session.isAcceptingKeys)
+        _ = session.handle(.key(.character("s")))
+        XCTAssertEqual(session.currentMatches.first, Fixtures.safari)
+        _ = session.handle(.key(.character("z")))
+        XCTAssertEqual(session.currentMatches, [], "no match is observable even with the overlay off")
+
+        _ = session.handle(.key(.escape))
+        XCTAssertFalse(session.isAcceptingKeys, "finished: keys are no longer interpreted")
+
+        _ = session.handle(.activatorReleased)
+        XCTAssertFalse(session.isAcceptingKeys)
+        XCTAssertEqual(session.currentMatches, [], "state is cleared on release")
+        XCTAssertEqual(session.currentQuery, "")
+    }
+
     func testOverlayStateSelectedHelper() {
         let state = OverlayState(query: "s", matches: [Fixtures.safari, Fixtures.slack], selectedIndex: 1, secureInputActive: false)
         XCTAssertEqual(state.selected, Fixtures.slack)

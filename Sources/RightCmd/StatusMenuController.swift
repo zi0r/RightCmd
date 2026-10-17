@@ -1,6 +1,18 @@
 import AppKit
 import RightCmdCore
 
+/// What the menu bar icon reflects while right ⌘ is held.
+enum IconState: Equatable {
+    /// Right ⌘ is not held: the plain template icon.
+    case idle
+    /// Right ⌘ is held, nothing typed yet.
+    case listening
+    /// The typed letters match at least one app (or an app was just switched to).
+    case matched
+    /// The typed letters match nothing.
+    case noMatch
+}
+
 /// The menu bar item. All state is pulled fresh in `menuNeedsUpdate`, so the menu is
 /// always accurate without observers.
 final class StatusMenuController: NSObject, NSMenuDelegate {
@@ -20,14 +32,23 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
     private let item: NSStatusItem
     private let menu = NSMenu()
 
+    private static let idleSymbol = "command.square"
+    private static let activeSymbol = "command.square.fill"
+    /// How long a match/no-match colour stays visible after right ⌘ is released, so the
+    /// outcome of a quick switch is still readable.
+    private static let lingerDuration: TimeInterval = 0.45
+    private var iconState: IconState = .idle
+    /// Incremented per transition so a pending linger from an earlier release can't clobber
+    /// a newer state.
+    private var iconGeneration = 0
+
     init(settingsStore: SettingsStore) {
         self.settingsStore = settingsStore
         self.item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         super.init()
 
         if let button = item.button {
-            button.image = NSImage(systemSymbolName: "command.square", accessibilityDescription: "RightCmd")
-            button.image?.isTemplate = true
+            button.image = Self.symbol(Self.idleSymbol)
             button.toolTip = "RightCmd — hold right ⌘ and type an app’s name"
         }
         menu.delegate = self
@@ -83,6 +104,10 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         overlayItem.state = settings.showOverlay ? .on : .off
         menu.addItem(overlayItem)
 
+        let tintItem = action("Tint Icon While Switching", #selector(toggleTint))
+        tintItem.state = settings.tintMenuBarIcon ? .on : .off
+        menu.addItem(tintItem)
+
         let loginItem = action("Launch at Login", #selector(toggleLaunchAtLogin))
         loginItem.state = LaunchAtLogin.isEnabled ? .on : .off
         loginItem.isEnabled = LaunchAtLogin.isSupported
@@ -101,6 +126,69 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         menu.addItem(quitItem)
     }
 
+    // MARK: Icon state
+
+    /// Sets the icon's state. Going back to `.idle` from a match/no-match state is delayed
+    /// by `lingerDuration` when `linger` is true, so a quick press-type-release still shows
+    /// its outcome; pass `linger: false` to drop to idle at once (cancel, Escape, sleep).
+    func show(_ state: IconState, linger: Bool = true) {
+        iconGeneration += 1
+        let generation = iconGeneration
+
+        if state == .idle, linger, iconState == .matched || iconState == .noMatch {
+            DispatchQueue.main.asyncAfter(deadline: .now() + Self.lingerDuration) { [weak self] in
+                guard let self, self.iconGeneration == generation else { return }
+                self.apply(.idle)
+            }
+            return
+        }
+        apply(state)
+    }
+
+    private func apply(_ state: IconState) {
+        iconState = state
+        item.button?.image = image(for: state)
+    }
+
+    private func image(for state: IconState) -> NSImage? {
+        let colors = settingsStore.settings.iconColors
+        switch state {
+        case .idle:
+            return Self.symbol(Self.idleSymbol)
+        case .listening:
+            return Self.tintedSymbol(Self.activeSymbol, color: NSColor(colors.listening))
+        case .matched:
+            return Self.tintedSymbol(Self.activeSymbol, color: NSColor(colors.matched))
+        case .noMatch:
+            return Self.tintedSymbol(Self.activeSymbol, color: NSColor(colors.noMatch))
+        }
+    }
+
+    /// The plain template icon, which the menu bar renders in its own monochrome style.
+    private static func symbol(_ name: String) -> NSImage? {
+        let image = NSImage(systemSymbolName: name, accessibilityDescription: "RightCmd")
+        image?.isTemplate = true
+        return image
+    }
+
+    /// A coloured, non-template copy of a symbol. The colour is baked into the bitmap:
+    /// `NSStatusBarButton.contentTintColor` is not honoured by the macOS 26 menu bar (it
+    /// substitutes the accent colour), so tinting has to be done by hand.
+    private static func tintedSymbol(_ name: String, color: NSColor) -> NSImage? {
+        guard let base = NSImage(systemSymbolName: name, accessibilityDescription: "RightCmd") else {
+            return nil
+        }
+        let image = NSImage(size: base.size, flipped: false) { rect in
+            base.draw(in: rect)
+            color.set()
+            rect.fill(using: .sourceAtop)
+            return true
+        }
+        image.isTemplate = false
+        image.accessibilityDescription = "RightCmd"
+        return image
+    }
+
     // MARK: Actions
 
     @objc private func toggleEnabled() {
@@ -114,6 +202,10 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
 
     @objc private func toggleOverlay() {
         settingsStore.update { $0.showOverlay.toggle() }
+    }
+
+    @objc private func toggleTint() {
+        settingsStore.update { $0.tintMenuBarIcon.toggle() }
     }
 
     @objc private func toggleLaunchAtLogin() {

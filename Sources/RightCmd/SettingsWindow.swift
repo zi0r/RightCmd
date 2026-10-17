@@ -39,6 +39,18 @@ final class SettingsModel: ObservableObject {
         launchAtLogin = LaunchAtLogin.isEnabled
     }
 
+    /// A `ColorPicker` binding for one of the icon colours. A picker can hand back a colour
+    /// with no RGB form (e.g. a pattern); those are ignored and the previous value stays.
+    func iconColorBinding(_ keyPath: WritableKeyPath<IconColors, SRGBColor>) -> Binding<Color> {
+        Binding(
+            get: { Color(self.settings.iconColors[keyPath: keyPath]) },
+            set: { newValue in
+                guard let rgb = SRGBColor(newValue) else { return }
+                self.settings.iconColors[keyPath: keyPath] = rgb
+            }
+        )
+    }
+
     var excludedPatternsText: String {
         get { settings.excludedPatterns.joined(separator: "\n") }
         set {
@@ -80,6 +92,24 @@ struct SettingsView: View {
                     Text("Bottom").tag(OverlayPosition.bottom)
                 }
                 .disabled(!model.settings.showOverlay)
+            }
+
+            Section {
+                Toggle("Tint the icon while right ⌘ is held", isOn: $model.settings.tintMenuBarIcon)
+                ColorPicker("Listening (nothing typed yet)", selection: model.iconColorBinding(\.listening), supportsOpacity: false)
+                ColorPicker("Match", selection: model.iconColorBinding(\.matched), supportsOpacity: false)
+                ColorPicker("No match", selection: model.iconColorBinding(\.noMatch), supportsOpacity: false)
+                HStack {
+                    Spacer()
+                    Button("Reset Colors") { model.settings.iconColors = .default }
+                        .disabled(model.settings.iconColors == .default)
+                }
+            } header: {
+                Text("Menu bar icon")
+            } footer: {
+                Text("The colour stays for a moment after you let go, so the result of a quick switch is still visible.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Section {
@@ -125,7 +155,7 @@ struct SettingsView: View {
 
 /// Owns the single settings window; reopening brings the existing one forward.
 final class SettingsWindowController {
-    static let contentSize = NSSize(width: 480, height: 560)
+    static let contentSize = NSSize(width: 480, height: 720)
 
     private let model: SettingsModel
     private var window: NSWindow?

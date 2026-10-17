@@ -101,6 +101,14 @@ public final class SwitchSession {
     /// The current query, for diagnostics.
     public var currentQuery: String { query }
 
+    /// The apps matching the current query, best first. Empty when nothing matches or no
+    /// session is in progress.
+    public var currentMatches: [AppCandidate] { matches }
+
+    /// True while key presses are being interpreted: right ⌘ is held and the session has
+    /// not been ended by Escape, Return or an automatic commit.
+    public var isAcceptingKeys: Bool { phase == .typing }
+
     public func handle(_ event: SessionEvent) -> [SessionAction] {
         switch event {
         case .activatorPressed:
@@ -142,6 +150,9 @@ public final class SwitchSession {
         }
         actions.append(contentsOf: hideOverlayIfNeeded())
         phase = .idle
+        query = ""
+        matches = []
+        selectedIndex = nil
         return actions
     }
 
