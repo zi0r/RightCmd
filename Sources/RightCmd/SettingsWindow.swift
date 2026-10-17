@@ -171,6 +171,8 @@ struct GeneralPane: View {
                 .labelsHidden()
                 Toggle("Switch as soon as only one app matches", isOn: $model.settings.commitOnUniqueMatch)
                 Toggle("Prefer another app when the best match is already in front", isOn: $model.settings.skipFrontmostApp)
+                Toggle("Move the pointer to the window you switch to", isOn: $model.settings.movePointerToWindow)
+                Hint("Happens once per hold, as soon as the switch is settled; not if the pointer is already in that window, and not after Escape.")
             }
 
             SettingsGroup(title: "Startup") {

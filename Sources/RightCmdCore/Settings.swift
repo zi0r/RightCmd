@@ -26,6 +26,9 @@ public struct Settings: Codable, Equatable, Sendable {
     /// As soon as the typed letters match exactly one app, switch to it and stop
     /// interpreting keys until right ⌘ is released. Applies in both switch modes.
     public var commitOnUniqueMatch: Bool = true
+    /// When a hold ends with a switch, move the pointer to the center of that app's window
+    /// (unless it is already inside it). Off by default: it moves the user's hardware.
+    public var movePointerToWindow: Bool = false
     public var showOverlay: Bool = true
     public var overlayPosition: OverlayPosition = .center
     /// Tint the menu bar icon while right ⌘ is held: `iconColors.listening` until something
@@ -73,7 +76,7 @@ public struct Settings: Codable, Equatable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case switchMode, matchWordPrefixes, matchInitials, skipFrontmostApp
-        case commitOnUniqueMatch, showOverlay, overlayPosition, tintMenuBarIcon, iconColors
+        case commitOnUniqueMatch, movePointerToWindow, showOverlay, overlayPosition, tintMenuBarIcon, iconColors
         case excludedPatterns, includeFinder, priorityPatterns
     }
 
@@ -85,6 +88,7 @@ public struct Settings: Codable, Equatable, Sendable {
         matchInitials = (try? c.decodeIfPresent(Bool.self, forKey: .matchInitials)) ?? defaults.matchInitials
         skipFrontmostApp = (try? c.decodeIfPresent(Bool.self, forKey: .skipFrontmostApp)) ?? defaults.skipFrontmostApp
         commitOnUniqueMatch = (try? c.decodeIfPresent(Bool.self, forKey: .commitOnUniqueMatch)) ?? defaults.commitOnUniqueMatch
+        movePointerToWindow = (try? c.decodeIfPresent(Bool.self, forKey: .movePointerToWindow)) ?? defaults.movePointerToWindow
         showOverlay = (try? c.decodeIfPresent(Bool.self, forKey: .showOverlay)) ?? defaults.showOverlay
         overlayPosition = (try? c.decodeIfPresent(OverlayPosition.self, forKey: .overlayPosition)) ?? defaults.overlayPosition
         tintMenuBarIcon = (try? c.decodeIfPresent(Bool.self, forKey: .tintMenuBarIcon)) ?? defaults.tintMenuBarIcon
@@ -101,6 +105,7 @@ public struct Settings: Codable, Equatable, Sendable {
         try c.encode(matchInitials, forKey: .matchInitials)
         try c.encode(skipFrontmostApp, forKey: .skipFrontmostApp)
         try c.encode(commitOnUniqueMatch, forKey: .commitOnUniqueMatch)
+        try c.encode(movePointerToWindow, forKey: .movePointerToWindow)
         try c.encode(showOverlay, forKey: .showOverlay)
         try c.encode(overlayPosition, forKey: .overlayPosition)
         try c.encode(tintMenuBarIcon, forKey: .tintMenuBarIcon)

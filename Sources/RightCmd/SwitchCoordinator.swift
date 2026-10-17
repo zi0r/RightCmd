@@ -245,6 +245,13 @@ final class SwitchCoordinator {
                 DispatchQueue.main.async {
                     activator.activate(candidate)
                 }
+            case .movePointer(let candidate):
+                // Queued behind the activation above on the same queue, so it runs right
+                // after it. The window frame comes from the target app's own AX tree, which
+                // doesn't depend on the activation having landed yet.
+                DispatchQueue.main.async {
+                    PointerMover.centerPointer(inWindowOf: candidate)
+                }
             }
         }
     }

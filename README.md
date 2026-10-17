@@ -58,6 +58,8 @@ macOS will ask for **Accessibility** permission. RightCmd needs it to observe ke
 
 **Switch as soon as only one app matches** (on by default) ends the search the moment the typed letters are unambiguous: `right⌘ + X` jumps to Xcode on the first keystroke and ignores anything else you type until you let go. This is what makes the on‑release mode feel instant. Turn it off in Settings if you prefer to see the match before it happens.
 
+**Move the pointer to the window you switch to** (off by default) places the pointer at the center of the target app's front window as soon as the switch is final: on a unique‑match commit, on Return, or otherwise on release — handy on large or multi‑monitor setups. It happens once per hold (not per letter in as‑you‑type mode), is skipped when the pointer is already inside that window or the window is minimised, and never after Escape.
+
 **Menu bar icon** (on by default) tints the icon while right ⌘ is held: blue while listening, green once the letters match an app, red when they match nothing. The colour lingers for half a second after you let go so a quick switch still shows its result. All three colours are configurable in Settings; it's a quick confirmation that works even with the overlay turned off.
 
 **Matching** is case‑ and accent‑insensitive and ranks results deterministically so the same keys always land on the same app:
@@ -70,7 +72,7 @@ Within a tier results are alphabetical. Type more letters, or use the arrow keys
 
 **Priority apps** (Settings › Priority apps) let you put your own apps first. Anything on the list that matches what you typed outranks every other match, in list order — so with Slack at the top, `S` goes to Slack even though Safari sorts first alphabetically, and with Chrome listed, `C` prefers Chrome over an app whose *name* starts with "C". Priority never adds an app that doesn't match. Add apps from the running-app menu (stored by bundle id, so renames and localisation don't matter) or type a name/bundle‑id pattern; reorder with the arrows. Prioritised matches show a small pin in the overlay.
 
-**Settings** (menu bar › Settings…) are organised in four tabs: *General* (switch mode, commit on unique match, prefer another app, launch at login, permission status), *Matching* (word‑prefix and initials matching, the priority list), *Appearance* (overlay, menu bar icon tint and colours), and *Exclusions* (Finder opt‑in, wildcard patterns such as `com.apple.*`).
+**Settings** (menu bar › Settings…) are organised in four tabs: *General* (switch mode, commit on unique match, prefer another app, move the pointer, launch at login, permission status), *Matching* (word‑prefix and initials matching, the priority list), *Appearance* (overlay, menu bar icon tint and colours), and *Exclusions* (Finder opt‑in, wildcard patterns such as `com.apple.*`).
 
 ### Things to know
 

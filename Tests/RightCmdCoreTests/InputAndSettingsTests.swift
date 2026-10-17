@@ -172,6 +172,7 @@ final class SettingsTests: XCTestCase {
         XCTAssertTrue(s.matchInitials)
         XCTAssertFalse(s.skipFrontmostApp)
         XCTAssertTrue(s.commitOnUniqueMatch)
+        XCTAssertFalse(s.movePointerToWindow)
         XCTAssertTrue(s.showOverlay)
         XCTAssertEqual(s.overlayPosition, .center)
         XCTAssertTrue(s.tintMenuBarIcon)
@@ -217,6 +218,7 @@ final class SettingsTests: XCTestCase {
         s.switchMode = .onRelease
         s.matchInitials = false
         s.commitOnUniqueMatch = false
+        s.movePointerToWindow = true
         s.tintMenuBarIcon = false
         s.iconColors.matched = SRGBColor(hex: "#123456")!
         s.overlayPosition = .top

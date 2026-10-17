@@ -51,6 +51,11 @@ public enum SessionAction: Equatable, Sendable {
     case showOverlay(OverlayState)
     case hideOverlay
     case activate(AppCandidate)
+    /// The hold's outcome is final and it is a switch to this app; move the pointer into its
+    /// window. Emitted at most once per session, as soon as no further switch can happen in
+    /// the hold (a unique-match commit, Return, or release), only when
+    /// `Settings.movePointerToWindow` is on.
+    case movePointer(to: AppCandidate)
 }
 
 /// A snapshot of the environment taken when a session starts.
@@ -159,6 +164,11 @@ public final class SwitchSession {
             actions.append(contentsOf: activate(target))
         }
         actions.append(contentsOf: hideOverlayIfNeeded())
+        if phase == .typing {
+            // Still typing at release: the last switch was the final one. (A session already
+            // finished by commit or Return emitted its pointer move at that moment.)
+            actions.append(contentsOf: pointerMoveIfNeeded())
+        }
         phase = .idle
         query = ""
         matches = []
@@ -209,6 +219,8 @@ public final class SwitchSession {
             if settings.switchMode == .live, lastActivated != nil, let original = context.frontmost {
                 actions.append(contentsOf: activate(original))
             }
+            // A cancelled hold is not a switch: nothing to point at on release.
+            lastActivated = nil
             return actions
 
         case .confirm:
@@ -218,6 +230,7 @@ public final class SwitchSession {
                 actions.append(contentsOf: activate(target))
             }
             actions.append(contentsOf: hideOverlayIfNeeded())
+            actions.append(contentsOf: pointerMoveIfNeeded())
             return actions
 
         case .next:
@@ -242,7 +255,7 @@ public final class SwitchSession {
     /// one-frame flash of the result would only be noise.
     private func commit(_ candidate: AppCandidate) -> [SessionAction] {
         phase = .finished
-        return activate(candidate) + hideOverlayIfNeeded()
+        return activate(candidate) + hideOverlayIfNeeded() + pointerMoveIfNeeded()
     }
 
     private func cycle(by delta: Int) -> [SessionAction] {
@@ -288,6 +301,13 @@ public final class SwitchSession {
         guard candidate != lastActivated else { return [] }
         lastActivated = candidate
         return [.activate(candidate)]
+    }
+
+    /// `.movePointer` for the app the hold has ended on, if the setting is on and a switch
+    /// happened. Callers invoke this exactly once per session, at the point of no return.
+    private func pointerMoveIfNeeded() -> [SessionAction] {
+        guard settings.movePointerToWindow, let target = lastActivated else { return [] }
+        return [.movePointer(to: target)]
     }
 
     private func overlayUpdate() -> [SessionAction] {
