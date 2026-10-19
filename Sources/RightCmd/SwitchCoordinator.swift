@@ -27,6 +27,16 @@ final class SwitchCoordinator {
     /// never see an unbalanced modifier sequence.
     private var activatorEventDelivered = false
 
+    /// The icon state the session itself asked for (listening / matched / no match). A
+    /// pass-through is shown *over* this and the session state is restored when it ends.
+    private var sessionIconState: IconState = .idle
+    /// A modifier combination the modified-key pass-through setting hands on is held.
+    private var modifierPassThroughActive = false
+    /// Pass-through keys currently down, so their key-ups are passed on too and the icon
+    /// returns to the session state only when the last one is released.
+    private var heldPassThroughKeys: Set<Int64> = []
+    private var isPassingThrough: Bool { modifierPassThroughActive || !heldPassThroughKeys.isEmpty }
+
     private(set) var lastError: Error?
 
     var isRunning: Bool { tap?.isRunning ?? false }
@@ -112,7 +122,7 @@ final class SwitchCoordinator {
             case .pressed:
                 guard !activatorHeld else { return !activatorEventDelivered }
                 activatorEventDelivered = settingsStore.settings.passThroughActivatorModifier
-                pressActivator()
+                pressActivator(flags: flags)
                 return !activatorEventDelivered
             case .released:
                 guard activatorHeld else { return false }
@@ -123,6 +133,8 @@ final class SwitchCoordinator {
                 // we were waiting for has been lost; let go now and pass this event on.
                 if activatorHeld, !ActivatorKey.isRightCommandHeld(flags) {
                     releaseActivator(reason: "flags no longer include ⌘")
+                } else if activatorHeld {
+                    updateModifierPassThrough(flags: flags)
                 }
                 return false
             }
@@ -138,6 +150,9 @@ final class SwitchCoordinator {
                 // Hand the key on (e.g. ⌘← bound to "move left a Space", or ⌘⇧P for a
                 // private window) and keep the session going; checked before the repeat
                 // filter so a held key repeats for the receiver as usual.
+                if !isRepeat, heldPassThroughKeys.insert(keyCode).inserted {
+                    refreshIcon()
+                }
                 return false
             }
             if isRepeat || ActivatorKey.blocksTyping(flags) {
@@ -157,8 +172,14 @@ final class SwitchCoordinator {
 
         case .keyUp(let keyCode, let flags):
             guard activatorHeld else { return false }
+            if heldPassThroughKeys.remove(keyCode) != nil {
+                // The key went down as a pass-through, so its key up goes on too, even if
+                // the modifier that qualified it (⇧ in ⌘⇧P) was released first.
+                refreshIcon()
+                return false
+            }
             if KeyPassThrough.passes(keyCode: keyCode, flags: flags, settings: settingsStore.settings) {
-                return false   // the matching key up must reach the receiver too
+                return false
             }
             return ActivatorKey.isRightCommandHeld(flags)
 
@@ -168,11 +189,15 @@ final class SwitchCoordinator {
         }
     }
 
-    private func pressActivator() {
+    private func pressActivator(flags: ModifierFlags) {
         activatorHeld = true
+        heldPassThroughKeys = []
+        modifierPassThroughActive = false
         Log.session.debug("Right ⌘ down")
         perform(session.handle(.activatorPressed))
         reportIconState(.listening)
+        // ⇧ may already be down when right ⌘ arrives.
+        updateModifierPassThrough(flags: flags)
         startWatchdog()
     }
 
@@ -228,7 +253,26 @@ final class SwitchCoordinator {
         // `.idle` always goes through so the icon can't stay tinted after the setting is
         // switched off mid-session.
         guard state == .idle || settingsStore.settings.tintMenuBarIcon else { return }
-        onIconState?(state, linger)
+        sessionIconState = state
+        if state == .idle {
+            modifierPassThroughActive = false
+            heldPassThroughKeys = []
+        }
+        onIconState?(isPassingThrough ? .passingThrough : state, linger)
+    }
+
+    /// Re-shows the icon after a pass-through started or ended, without touching the
+    /// session's own state.
+    private func refreshIcon() {
+        guard activatorHeld, settingsStore.settings.tintMenuBarIcon else { return }
+        onIconState?(isPassingThrough ? .passingThrough : sessionIconState, false)
+    }
+
+    private func updateModifierPassThrough(flags: ModifierFlags) {
+        let active = settingsStore.settings.passThroughModifiedKeys && KeyPassThrough.hasExtraModifier(flags)
+        guard active != modifierPassThroughActive else { return }
+        modifierPassThroughActive = active
+        refreshIcon()
     }
 
     private func reportIconState(afterKey input: KeyInput, actions: [SessionAction]) {

@@ -11,6 +11,9 @@ enum IconState: Equatable {
     case matched
     /// The typed letters match nothing.
     case noMatch
+    /// Keys are being handed on rather than interpreted (a pass-through key is down, or a
+    /// modifier combination the pass-through settings cover is held).
+    case passingThrough
 }
 
 /// The menu bar item. All state is pulled fresh in `menuNeedsUpdate`, so the menu is
@@ -161,6 +164,8 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
             return Self.tintedSymbol(Self.activeSymbol, color: NSColor(colors.matched))
         case .noMatch:
             return Self.tintedSymbol(Self.activeSymbol, color: NSColor(colors.noMatch))
+        case .passingThrough:
+            return Self.tintedSymbol(Self.activeSymbol, color: NSColor(colors.passThrough))
         }
     }
 

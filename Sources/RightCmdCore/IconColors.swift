@@ -47,22 +47,29 @@ public struct IconColors: Codable, Equatable, Sendable {
     public var matched: SRGBColor
     /// The typed letters match nothing.
     public var noMatch: SRGBColor
+    /// Keys are being passed through to the system or the front app: a pass-through key is
+    /// down, or a modifier combination that the pass-through settings hand on is held.
+    public var passThrough: SRGBColor
 
-    public init(listening: SRGBColor, matched: SRGBColor, noMatch: SRGBColor) {
+    public init(listening: SRGBColor, matched: SRGBColor, noMatch: SRGBColor, passThrough: SRGBColor = IconColors.defaultPassThrough) {
         self.listening = listening
         self.matched = matched
         self.noMatch = noMatch
+        self.passThrough = passThrough
     }
 
-    /// The system blue, green and red.
+    /// The system blue, green, red and orange.
     public static let `default` = IconColors(
         listening: SRGBColor(hex: "#0A84FF")!,
         matched: SRGBColor(hex: "#30D158")!,
-        noMatch: SRGBColor(hex: "#FF453A")!
+        noMatch: SRGBColor(hex: "#FF453A")!,
+        passThrough: defaultPassThrough
     )
 
+    public static let defaultPassThrough = SRGBColor(hex: "#FF9F0A")!
+
     private enum CodingKeys: String, CodingKey {
-        case listening, matched, noMatch
+        case listening, matched, noMatch, passThrough
     }
 
     public init(from decoder: Decoder) throws {
@@ -71,6 +78,7 @@ public struct IconColors: Codable, Equatable, Sendable {
         listening = (try? c.decodeIfPresent(SRGBColor.self, forKey: .listening)) ?? defaults.listening
         matched = (try? c.decodeIfPresent(SRGBColor.self, forKey: .matched)) ?? defaults.matched
         noMatch = (try? c.decodeIfPresent(SRGBColor.self, forKey: .noMatch)) ?? defaults.noMatch
+        passThrough = (try? c.decodeIfPresent(SRGBColor.self, forKey: .passThrough)) ?? defaults.passThrough
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -78,5 +86,6 @@ public struct IconColors: Codable, Equatable, Sendable {
         try c.encode(listening, forKey: .listening)
         try c.encode(matched, forKey: .matched)
         try c.encode(noMatch, forKey: .noMatch)
+        try c.encode(passThrough, forKey: .passThrough)
     }
 }

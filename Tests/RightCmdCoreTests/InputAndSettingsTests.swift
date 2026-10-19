@@ -433,10 +433,18 @@ final class SRGBColorTests: XCTestCase {
         XCTAssertEqual(IconColors.default.listening.hexString, "#0A84FF")
         XCTAssertEqual(IconColors.default.matched.hexString, "#30D158")
         XCTAssertEqual(IconColors.default.noMatch.hexString, "#FF453A")
+        XCTAssertEqual(IconColors.default.passThrough.hexString, "#FF9F0A")
+    }
+
+    func testColoursSavedBeforePassThroughExistedGetItsDefault() throws {
+        let json = #"{"listening":{"red":0,"green":0,"blue":1},"matched":{"red":0,"green":1,"blue":0},"noMatch":{"red":1,"green":0,"blue":0}}"#.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(IconColors.self, from: json)
+        XCTAssertEqual(decoded.listening, SRGBColor(red: 0, green: 0, blue: 1))
+        XCTAssertEqual(decoded.passThrough, IconColors.defaultPassThrough)
     }
 
     func testCodableRoundTrip() throws {
-        let colors = IconColors(listening: SRGBColor(hex: "#111111")!, matched: SRGBColor(hex: "#222222")!, noMatch: SRGBColor(hex: "#333333")!)
+        let colors = IconColors(listening: SRGBColor(hex: "#111111")!, matched: SRGBColor(hex: "#222222")!, noMatch: SRGBColor(hex: "#333333")!, passThrough: SRGBColor(hex: "#444444")!)
         let data = try JSONEncoder().encode(colors)
         XCTAssertEqual(try JSONDecoder().decode(IconColors.self, from: data), colors)
     }

@@ -334,6 +334,7 @@ struct AppearancePane: View {
                     colorRow("Listening (nothing typed yet)", \.listening)
                     colorRow("Match", \.matched)
                     colorRow("No match", \.noMatch)
+                    colorRow("Passing keys through", \.passThrough)
                 }
                 .disabled(!model.settings.tintMenuBarIcon)
                 HStack {

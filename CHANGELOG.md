@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- A fourth icon colour, **Passing keys through** (orange by default), shown while a
+  pass‑through key is down or a pass‑through modifier combination is held; the icon
+  returns to the session colour when that ends. Saved colour sets from earlier versions
+  pick up the default for it.
+
+### Fixed
+- The key‑up of a passed‑through key is now handed on even if the qualifying modifier was
+  released first (e.g. letting go of ⇧ before P in ⌘⇧P), so the receiver never sees an
+  unbalanced key press.
+
 ## 1.0.2 — 2026-10-17
 
 ### Added
