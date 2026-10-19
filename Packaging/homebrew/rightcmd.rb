@@ -4,7 +4,7 @@ cask "rightcmd" do
   version "1.0.3"
   sha256 "0000000000000000000000000000000000000000000000000000000000000000"
 
-  url "https://github.com/OWNER/RightCmd/releases/download/v#{version}/RightCmd-#{version}.zip"
+  url "https://github.com/OWNER/RightCmd/releases/download/#{version}/RightCmd-#{version}.zip"
   name "RightCmd"
   desc "Hold right ⌘ and type the first letters of an app to switch to it"
   homepage "https://github.com/OWNER/RightCmd"

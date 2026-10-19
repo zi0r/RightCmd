@@ -2,7 +2,7 @@ APP      := RightCmd
 BUILD    := build
 APP_PATH := $(BUILD)/$(APP).app
 
-.PHONY: all build test test-verbose run app dist cask install uninstall clean xcodeproj icon
+.PHONY: all build test test-verbose run app dist cask formula install uninstall clean xcodeproj icon
 
 all: app
 
@@ -37,6 +37,12 @@ dist:
 cask:
 	@[ -n "$$REPO" ] || { echo "REPO is not set (e.g. make cask REPO=you/RightCmd TAP=you/tap)"; exit 1; }
 	scripts/update-cask.sh "$$REPO"
+
+## Regenerate the Homebrew formula (build-from-source) for the tagged release (REPO=owner/repo).
+## With TAP=you/tap it is also copied into that local tap and audited there.
+formula:
+	@[ -n "$$REPO" ] || { echo "REPO is not set (e.g. make formula REPO=you/RightCmd TAP=you/tap)"; exit 1; }
+	scripts/update-formula.sh "$$REPO"
 
 ## Rebuild Packaging/AppIcon.icns from Packaging/AppIcon-1024.png (macOS only)
 icon:

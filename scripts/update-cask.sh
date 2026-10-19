@@ -11,8 +11,9 @@
 #   runs `brew audit --cask --strict` and `brew style` on it by name. Homebrew no longer
 #   audits or installs casks given as file paths; they must come from a tap.
 #
-# Publish the release first (tag v<version>, asset RightCmd-<version>.zip): the audit
-# downloads the URL to check the checksum.
+# Publish the release first (tag <version>, asset RightCmd-<version>.zip): the audit
+# downloads the URL to check the checksum. Tags are the bare version by default; set
+# TAG_PREFIX=v if you tag as v<version>.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -20,6 +21,7 @@ REPO="${1:?github owner/repo, e.g. zi/RightCmd}"
 VERSION="$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" Packaging/Info.plist)"
 ZIP="${2:-build/RightCmd-$VERSION.zip}"
 BUNDLE_ID="$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" Packaging/Info.plist)"
+TAG_PREFIX="${TAG_PREFIX:-}"
 OUT="Packaging/homebrew/rightcmd.rb"
 
 [[ -f "$ZIP" ]] || { echo "error: $ZIP not found; run 'make app' (ad-hoc, for testing) or 'make dist' (Developer ID) first" >&2; exit 1; }
@@ -35,7 +37,7 @@ cask "rightcmd" do
   version "$VERSION"
   sha256 "$SHA"
 
-  url "https://github.com/$REPO/releases/download/v#{version}/RightCmd-#{version}.zip"
+  url "https://github.com/$REPO/releases/download/${TAG_PREFIX}#{version}/RightCmd-#{version}.zip"
   name "RightCmd"
   desc "Hold right ⌘ and type the first letters of an app to switch to it"
   homepage "https://github.com/$REPO"

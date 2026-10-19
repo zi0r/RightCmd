@@ -3,6 +3,9 @@
 ## 1.0.3 — 2026-10-18
 
 ### Added
+- **Homebrew formula** (build from source) alongside the cask, for distribution without a
+  Developer ID: `make formula` generates it from the tagged release and audits it in a
+  local tap. Its caveats explain the Accessibility re‑grant that ad‑hoc signing implies.
 - **Choice of activator key**: right ⌘ (default), right ⌥ or right ⌃, in Settings › General.
   Modifier handling, pass‑through rules and the menu bar tint all follow the chosen key.
 - **Alternate names**: apps are matched under their bundle file name and Info.plist names

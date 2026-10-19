@@ -53,14 +53,28 @@ That builds a universal binary, signs it with the hardened runtime and a secure 
 
 ### Homebrew
 
-A cask lives at `Packaging/homebrew/rightcmd.rb`. It's a cask rather than a formula because the artifact is a prebuilt, notarized `.app`, not something Homebrew compiles. Releasing goes:
+There are two ways to ship through Homebrew, and which one fits depends on whether you have a Developer ID:
+
+| | Cask (prebuilt `.app`) | Formula (built from source) |
+| --- | --- | --- |
+| Needs an Apple Developer account | Yes, for notarization — without it users must install with `--no-quarantine` | No |
+| Gatekeeper | Clean when notarized | Clean: the binary is built locally, so it is never quarantined |
+| Accessibility grant across upgrades | Persists (tied to Team ID + bundle id) | Must be re‑granted after each upgrade: the ad‑hoc signature's hash changes with every build |
+| User needs Xcode 26 | No | Yes |
+| Install | `brew install --cask you/tap/rightcmd` | `brew install you/tap/rightcmd` |
+
+Both can live in the same tap under the same name; Homebrew picks by the `--cask` flag. The formula is the right choice if you won't be paying for a Developer ID; the cask is better for everyone else.
+
+**Formula:** `Packaging/homebrew/rightcmd-formula.rb` builds the tagged source with `swift build`, assembles and ad‑hoc signs `RightCmd.app` inside the Homebrew prefix, and installs a `rightcmd` command that launches it. Its caveats tell users where the app is, how to copy it to /Applications, and about the Accessibility re‑grant. Releasing: push the `<version>` tag, then `make formula REPO=you/RightCmd TAP=you/tap` — that downloads GitHub's source tarball for the tag to compute the checksum, writes the formula, copies it into the local tap as `Formula/rightcmd.rb`, and runs `brew audit --strict --formula` and `brew style`. `brew install --build-from-source you/tap/rightcmd` then exercises it end to end before you push the tap.
+
+**Cask:** `Packaging/homebrew/rightcmd.rb` installs the prebuilt, notarized `.app`. Releasing goes:
 
 1. `make dist` → `build/RightCmd-<version>.zip`. (`make app` produces the same zip from an ad‑hoc build, enough to exercise the cask, but Gatekeeper will refuse an unsigned download on other Macs unless they install with `--no-quarantine`; use `make dist` for anything you publish.)
-2. Create a GitHub release tagged `v<version>` and attach that zip, unrenamed.
+2. Create a GitHub release tagged `<version>` (e.g. `1.0.3`; set `TAG_PREFIX=v` on the `make` commands below if you prefer `v1.0.3`) and attach that zip, unrenamed.
 3. `make cask REPO=you/RightCmd TAP=you/tap` — rewrites the cask with the version from `Info.plist` and the zip's SHA‑256, copies it into a local tap (created with `brew tap-new` if needed), and runs `brew audit --cask --strict` and `brew style` on it. Homebrew only audits and installs casks that live in a tap, not loose files, which is why the local tap exists.
 4. Commit and push the tap directory (`$(brew --repository)/Library/Taps/you/homebrew-tap`) to a GitHub repo named `homebrew-tap`.
 
-Users then install with `brew install --cask you/tap/rightcmd`, and `brew upgrade` follows your releases; the cask's `livecheck` block lets `brew livecheck` notice new tags. Homebrew's main cask repository has a notability threshold (roughly 30+ stars or forks and a release history), so a personal tap is the right starting point; the same file moves there unchanged if the app later qualifies.
+Users then install with `brew install --cask you/tap/rightcmd`, and `brew upgrade` follows your releases; the cask's `livecheck` block lets `brew livecheck` notice new tags. Homebrew's main repositories have a notability threshold (roughly 30+ stars or forks and a release history), so a personal tap is the right starting point for either file; note that `homebrew/core` would not accept the formula regardless, since core formulae don't install GUI apps — that restriction doesn't apply to your own tap.
 
 Continuous integration: `.github/workflows/ci.yml` builds, tests and assembles an ad‑hoc bundle on a macOS 26 runner for every push and pull request. Signing and notarization stay local on purpose — they need your certificate and credentials.
 
