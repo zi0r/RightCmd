@@ -92,10 +92,13 @@ public struct RankedMatch: Equatable, Sendable {
 
 /// Ranks running applications against the letters typed while the activator key is held.
 ///
-/// Ranking is deterministic so that a given query always lands on the same app:
-/// better tier first, then case-insensitive alphabetical by name, then by process id.
-/// This is what makes "rcmd-S always goes to the same S app" learnable; the user types
-/// more letters to disambiguate.
+/// Ranking is deterministic so that a given query always lands on the same app. Matches
+/// are grouped — the user's priority list first (in list order), then everything else,
+/// then the deprioritized list (in list order) — and within a group ordered by better
+/// tier, then case-insensitive alphabetical by the app's own name, then by process id.
+/// Each app is matched under its own name, its alternate names and any user aliases, and
+/// takes the best tier any of them achieves. This is what makes "S always goes to the
+/// same app" learnable; the user types more letters to disambiguate.
 public enum AppMatcher {
     /// Returns every candidate that matches `query`, best first.
     public static func rankedMatches(

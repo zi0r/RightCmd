@@ -39,9 +39,9 @@ public struct SRGBColor: Codable, Equatable, Sendable {
     }
 }
 
-/// Colours used to tint the menu bar icon while right ⌘ is held.
+/// Colours used to tint the menu bar icon while the activator key is held.
 public struct IconColors: Codable, Equatable, Sendable {
-    /// Right ⌘ is held and nothing has been typed yet.
+    /// The activator key is held and nothing has been typed yet.
     public var listening: SRGBColor
     /// The typed letters match at least one app.
     public var matched: SRGBColor

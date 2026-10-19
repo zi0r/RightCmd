@@ -31,6 +31,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         settingsStore.onChange = { [weak self] settings in
             self?.coordinator.apply(settings)
+            self?.settingsWindow.settingsDidChange()
         }
 
         statusMenu.statusProvider = { [weak self] in

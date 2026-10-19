@@ -45,11 +45,11 @@ public struct OverlayState: Equatable, Sendable {
 
 /// Input to the session.
 public enum SessionEvent: Equatable, Sendable {
-    /// Right ⌘ went down.
+    /// The activator key went down.
     case activatorPressed
-    /// Right ⌘ went up.
+    /// The activator key went up.
     case activatorReleased
-    /// A key was pressed while right ⌘ was held.
+    /// A key was pressed while the activator key was held.
     case key(KeyInput)
     /// The event tap was disabled or permissions were lost; abandon the session.
     case interrupted
@@ -71,7 +71,7 @@ public enum SessionAction: Equatable, Sendable {
 public struct SessionContext: Equatable, Sendable {
     /// Switchable apps (already filtered by the exclusion list).
     public var candidates: [AppCandidate]
-    /// The app that was in front when right ⌘ was pressed.
+    /// The app that was in front when the activator key was pressed.
     public var frontmost: AppCandidate?
     public var secureInputActive: Bool
 
@@ -82,7 +82,7 @@ public struct SessionContext: Equatable, Sendable {
     }
 }
 
-/// Models one "hold right ⌘, type, release" interaction.
+/// Models one "hold the activator key, type, release" interaction.
 ///
 /// The session is pure: it owns no system resources and performs no side effects. It
 /// returns `SessionAction`s that the app layer executes. That makes the whole interaction
@@ -90,11 +90,11 @@ public struct SessionContext: Equatable, Sendable {
 /// being disabled mid-session.
 public final class SwitchSession {
     private enum Phase {
-        /// Right ⌘ is not held.
+        /// The activator key is not held.
         case idle
-        /// Right ⌘ is held and keys are being interpreted.
+        /// The activator key is held and keys are being interpreted.
         case typing
-        /// The session was ended by Escape or Return but right ⌘ is still held;
+        /// The session was ended by Escape or Return but the activator key is still held;
         /// further keys are ignored until it is released.
         case finished
     }
@@ -119,7 +119,7 @@ public final class SwitchSession {
         self.contextProvider = contextProvider
     }
 
-    /// True while right ⌘ is held (typing or finished).
+    /// True while the activator key is held (typing or finished).
     public var isActive: Bool {
         phase != .idle
     }
@@ -131,7 +131,7 @@ public final class SwitchSession {
     /// session is in progress.
     public var currentMatches: [AppCandidate] { matches }
 
-    /// True while key presses are being interpreted: right ⌘ is held and the session has
+    /// True while key presses are being interpreted: the activator key is held and the session has
     /// not been ended by Escape, Return or an automatic commit.
     public var isAcceptingKeys: Bool { phase == .typing }
 
@@ -157,6 +157,9 @@ public final class SwitchSession {
         context = contextProvider()
         query = ""
         matches = []
+        prioritizedIDs = []
+        deprioritizedIDs = []
+        matchedAliases = [:]
         selectedIndex = nil
         lastActivated = nil
         overlayVisible = false

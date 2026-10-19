@@ -34,7 +34,15 @@ final class SettingsModel: ObservableObject {
         self.launchAtLogin = LaunchAtLogin.isEnabled
     }
 
-    /// Re-read from the store (e.g. after a menu change) without writing back.
+    /// Pick up a change made elsewhere (the menu bar) without writing back. Cheap enough
+    /// to call on every store change: a no-op when the values already agree.
+    func syncFromStore() {
+        if settings != store.settings {
+            settings = store.settings
+        }
+    }
+
+    /// Full refresh when the window opens: settings, login state and the running-app list.
     func refresh() {
         if settings != store.settings {
             settings = store.settings
@@ -212,6 +220,14 @@ struct GeneralPane: View {
                 Toggle("Prefer another app when the best match is already in front", isOn: $model.settings.skipFrontmostApp)
                 Toggle("Move the pointer to the window you switch to", isOn: $model.settings.movePointerToWindow)
                 Hint("Happens once per hold, as soon as the switch is settled; not if the pointer is already in that window, and not after Escape.")
+                Toggle("Switch Spaces instantly", isOn: $model.settings.instantSpaceSwitching)
+                    .disabled(!SpaceSwitcher.isAvailable)
+                Hint(SpaceSwitcher.isAvailable
+                     ? "When the app’s window is on another Space, jump there without the slide animation (the InstantSpaceSwitcher technique). Relies on private macOS APIs; turn it off if a macOS update makes it misbehave."
+                     : "Unavailable: this macOS does not expose the window-server calls it needs.")
+            }
+
+            SettingsGroup(title: "Pass keys through while \(keyName) is held") {
                 Toggle("Let ← and → reach the system", isOn: $model.settings.passThroughLeftRightArrows)
                 Hint("For \(key)← / \(key)→ Space shortcuts bound in System Settings › Keyboard › Shortcuts › Mission Control. ↑ and ↓ still cycle between matches.")
                 Toggle("Let Space reach the system", isOn: $model.settings.passThroughSpace)
@@ -220,11 +236,6 @@ struct GeneralPane: View {
                 Hint("Lets shortcuts like \(key)⇧P reach the front app while \(keyName) is held. With this on, type app names with \(keyName) alone (Shift is no longer ignored).")
                 Toggle("Let apps see \(keyName) itself", isOn: $model.settings.passThroughActivatorModifier)
                 Hint("Delivers the modifier press and release, for apps that react to \(key) being held (link underlining, temporary tool modes). Leave off unless a pass-through shortcut misbehaves; it also triggers “double-tap” launchers bound to that key.")
-                Toggle("Switch Spaces instantly", isOn: $model.settings.instantSpaceSwitching)
-                    .disabled(!SpaceSwitcher.isAvailable)
-                Hint(SpaceSwitcher.isAvailable
-                     ? "When the app’s window is on another Space, jump there without the slide animation (the InstantSpaceSwitcher technique). Relies on private macOS APIs; turn it off if a macOS update makes it misbehave."
-                     : "Unavailable: this macOS does not expose the window-server calls it needs.")
             }
 
             SettingsGroup(title: "Startup") {
@@ -576,6 +587,12 @@ final class SettingsWindowController {
         model.refresh()
         NSApp.activate()
         window?.makeKeyAndOrderFront(nil)
+    }
+
+    /// Called by the app when settings change anywhere, so an open window stays current.
+    func settingsDidChange() {
+        guard window?.isVisible == true else { return }
+        model.syncFromStore()
     }
 
     private func makeWindow() -> NSWindow {

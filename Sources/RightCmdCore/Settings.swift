@@ -4,7 +4,7 @@ import Foundation
 public enum SwitchMode: String, Codable, CaseIterable, Sendable {
     /// Switch immediately as each letter is typed (like the reference implementation).
     case live
-    /// Only switch when right ⌘ is released or Return is pressed.
+    /// Only switch when the activator key is released or Return is pressed.
     case onRelease
 }
 
@@ -21,12 +21,12 @@ public struct Settings: Codable, Equatable, Sendable {
     public var switchMode: SwitchMode = .live
     public var matchWordPrefixes: Bool = true
     public var matchInitials: Bool = true
-    /// When the best match is the app that was already in front when right ⌘ was pressed,
+    /// When the best match is the app that was already in front when the activator key was pressed,
     /// prefer the next match instead. Off by default so that the same keys always land on
     /// the same app.
     public var skipFrontmostApp: Bool = false
     /// As soon as the typed letters match exactly one app, switch to it and stop
-    /// interpreting keys until right ⌘ is released. Applies in both switch modes.
+    /// interpreting keys until the activator key is released. Applies in both switch modes.
     public var commitOnUniqueMatch: Bool = true
     /// When a hold ends with a switch, move the pointer to the center of that app's window
     /// (unless it is already inside it). Off by default: it moves the user's hardware.
@@ -35,24 +35,25 @@ public struct Settings: Codable, Equatable, Sendable {
     /// animation (the InstantSpaceSwitcher technique). Off by default: it relies on
     /// private window-server APIs.
     public var instantSpaceSwitching: Bool = false
-    /// Let ← and → pass through to the system while right ⌘ is held, for people who bind
+    /// Let ← and → pass through to the system while the activator key is held, for people who bind
     /// ⌘← / ⌘→ to Mission Control's "move left/right a Space". ↑ and ↓ keep cycling matches.
     public var passThroughLeftRightArrows: Bool = false
-    /// Let Space pass through to the system while right ⌘ is held, so ⌘Space launchers
+    /// Let Space pass through to the system while the activator key is held, so ⌘Space launchers
     /// (Spotlight, Raycast, Alfred) can be bound to the right key as well.
     public var passThroughSpace: Bool = false
-    /// Let any key pressed together with Shift, Option, Control or the left ⌘ pass through
-    /// to the frontmost app while right ⌘ is held, so shortcuts such as ⌘⇧P keep working.
-    /// While on, app names must be typed with right ⌘ alone.
+    /// Let any key pressed together with Shift, either other modifier, or the activator's
+    /// left twin pass through to the frontmost app while the activator key is held, so
+    /// shortcuts such as ⌘⇧P keep working. While on, app names must be typed with the
+    /// activator key alone.
     public var passThroughModifiedKeys: Bool = false
-    /// Deliver the right ⌘ press and release themselves to apps instead of swallowing
+    /// Deliver the activator key's own press and release to apps instead of swallowing
     /// them. Needed only by apps that react to the modifier going down (⌘-hover link
     /// underlining, temporary tool modes, menu alternates); off by default because a bare
-    /// ⌘ press also trips "double-tap ⌘" launchers.
+    /// modifier press also trips "double-tap" launchers bound to that key.
     public var passThroughActivatorModifier: Bool = false
     public var showOverlay: Bool = true
     public var overlayPosition: OverlayPosition = .center
-    /// Tint the menu bar icon while right ⌘ is held: `iconColors.listening` until something
+    /// Tint the menu bar icon while the activator key is held: `iconColors.listening` until something
     /// is typed, then `matched` or `noMatch`. A glanceable confirmation that doesn't need
     /// the overlay.
     public var tintMenuBarIcon: Bool = true

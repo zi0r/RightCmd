@@ -1,11 +1,11 @@
 import AppKit
 import RightCmdCore
 
-/// What the menu bar icon reflects while right ⌘ is held.
+/// What the menu bar icon reflects while the activator key is held.
 enum IconState: Equatable {
-    /// Right ⌘ is not held: the plain template icon.
+    /// The activator key is not held: the plain template icon.
     case idle
-    /// Right ⌘ is held, nothing typed yet.
+    /// The activator key is held, nothing typed yet.
     case listening
     /// The typed letters match at least one app (or an app was just switched to).
     case matched
@@ -37,7 +37,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
 
     private static let idleSymbol = "command.square"
     private static let activeSymbol = "command.square.fill"
-    /// How long a match/no-match colour stays visible after right ⌘ is released, so the
+    /// How long a match/no-match colour stays visible after the key is released, so the
     /// outcome of a quick switch is still readable.
     private static let lingerDuration: TimeInterval = 0.45
     private var iconState: IconState = .idle

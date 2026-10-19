@@ -22,7 +22,7 @@ final class SwitchCoordinator {
     /// Verifies against the live HID modifier state that the activator is really still
     /// down, so a missed release can never leave the keyboard swallowed.
     private var heldWatchdog: Timer?
-    /// Whether the right ⌘ *press* was delivered to apps. Decided once per hold so the
+    /// Whether the activator key's *press* was delivered to apps. Decided once per hold so the
     /// release is handled the same way even if the setting changes mid-hold; apps must
     /// never see an unbalanced modifier sequence.
     private var activatorEventDelivered = false
@@ -133,7 +133,7 @@ final class SwitchCoordinator {
                 releaseActivator(reason: "key up")
                 return !activatorEventDelivered
             case .none:
-                // Another modifier changed. If ⌘ is no longer reported at all, the release
+                // Another modifier changed. If the activator is no longer reported at all, the release
                 // we were waiting for has been lost; let go now and pass this event on.
                 if activatorHeld, !ActivatorKey.isHeld(flags, activator: activatorKey) {
                     releaseActivator(reason: "flags no longer include \(activatorKey.symbol)")
@@ -200,7 +200,7 @@ final class SwitchCoordinator {
         Log.session.debug("\(self.activatorKey.name, privacy: .public) down")
         perform(session.handle(.activatorPressed))
         reportIconState(.listening)
-        // ⇧ may already be down when right ⌘ arrives.
+        // ⇧ may already be down when the activator arrives.
         updateModifierPassThrough(flags: flags)
         startWatchdog()
     }

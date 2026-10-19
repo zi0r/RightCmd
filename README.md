@@ -115,7 +115,7 @@ Within a tier results are alphabetical. Type more letters, or use the arrow keys
 
 **Deprioritized apps** are the mirror image: anything on that list still matches and is still switchable, but ranks after every other match (list order among themselves), so a helper app that shares a first letter with something you use constantly never wins a tie — type one more letter, or let it be the only match, and it's reachable as ever. An app on both lists counts as a priority app. Deprioritised matches show a small down‑arrow in the overlay.
 
-**Settings** (menu bar › Settings…) are organised in four tabs: *General* (activator key, switch mode, commit on unique match, prefer another app, move the pointer, ←/→, Space and modified‑key pass‑through, modifier delivery, instant Space switching, launch at login, permission status), *Matching* (word‑prefix and initials matching, aliases), *Priorities* (the priority and deprioritized lists), *Appearance* (overlay, menu bar icon tint and colours), and *Exclusions* (Finder opt‑in, wildcard patterns such as `com.apple.*`).
+**Settings** (menu bar › Settings…) are organised in five tabs: *General* (activator key, switch mode, commit on unique match, prefer another app, move the pointer, ←/→, Space and modified‑key pass‑through, modifier delivery, instant Space switching, launch at login, permission status), *Matching* (word‑prefix and initials matching, aliases), *Priorities* (the priority and deprioritized lists), *Appearance* (overlay, menu bar icon tint and colours), and *Exclusions* (Finder opt‑in, wildcard patterns such as `com.apple.*`).
 
 ### Things to know
 
