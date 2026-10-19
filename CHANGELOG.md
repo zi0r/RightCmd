@@ -10,6 +10,10 @@
 - **Let Space reach the system**: passes ⌘Space through for Spotlight/Raycast/Alfred‑style
   launchers, alongside the existing ←/→ pass‑through.
 
+- App icon, and a `make dist` target that notarizes and staples a Developer ID build.
+- Homebrew cask template with `make cask` to pin version and checksum per release; CI
+  workflow that builds and tests on macOS 26.
+
 ### Changed
 - `RankedMatch` reports a `MatchPlacement` (prioritised / normal / deprioritised);
   `priorityRank` remains as a derived property.

@@ -2,7 +2,7 @@ APP      := RightCmd
 BUILD    := build
 APP_PATH := $(BUILD)/$(APP).app
 
-.PHONY: all build test test-verbose run app install uninstall clean xcodeproj
+.PHONY: all build test test-verbose run app dist cask install uninstall clean xcodeproj icon
 
 all: app
 
@@ -24,6 +24,23 @@ run:
 ## Build the release .app bundle into ./build (set CODESIGN_IDENTITY to sign properly)
 app:
 	scripts/bundle.sh
+
+## Developer ID build, notarized and stapled, as build/RightCmd-<version>.zip
+## Requires CODESIGN_IDENTITY and NOTARY_PROFILE in the environment (see scripts/bundle.sh)
+dist:
+	@[ -n "$$CODESIGN_IDENTITY" ] || { echo "CODESIGN_IDENTITY is not set"; exit 1; }
+	@[ -n "$$NOTARY_PROFILE" ] || { echo "NOTARY_PROFILE is not set"; exit 1; }
+	UNIVERSAL=1 scripts/bundle.sh
+
+## Regenerate the Homebrew cask from the zip `make dist` produced (REPO=owner/repo).
+## With TAP=you/tap it is also copied into that local tap and audited there.
+cask:
+	@[ -n "$$REPO" ] || { echo "REPO is not set (e.g. make cask REPO=you/RightCmd TAP=you/tap)"; exit 1; }
+	scripts/update-cask.sh "$$REPO"
+
+## Rebuild Packaging/AppIcon.icns from Packaging/AppIcon-1024.png (macOS only)
+icon:
+	scripts/make-icon.sh Packaging/AppIcon-1024.png Packaging/AppIcon.icns
 
 ## Copy the bundle into /Applications
 install: app

@@ -26,11 +26,43 @@ make install    # copies it to /Applications
 
 The bundle identifier is `com.rightcmd.app` (in `Packaging/Info.plist` and `project.yml`); change it to your own reverse‑DNS name before signing with a real identity.
 
-For a signature that survives rebuilds (and for notarization), sign with a real identity:
+For a signature that survives rebuilds, sign with a real identity:
 
 ```sh
 CODESIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" make app
 ```
+
+### Distributing (Developer ID + notarization)
+
+The app can't go in the Mac App Store (it needs a global event tap and private window‑server calls, neither of which survives the sandbox), so the route is Developer ID signing plus notarization, which Gatekeeper treats as fully trusted. One‑time setup: create a *Developer ID Application* certificate in your Apple Developer account and install it in your keychain, then store notarization credentials:
+
+```sh
+xcrun notarytool store-credentials RightCmd \
+    --apple-id you@example.com --team-id TEAMID --password <app-specific password>
+```
+
+Then each release:
+
+```sh
+CODESIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" NOTARY_PROFILE=RightCmd make dist
+```
+
+That builds a universal binary, signs it with the hardened runtime and a secure timestamp, submits it, waits for Apple's verdict, staples the ticket, runs a Gatekeeper assessment, and leaves `build/RightCmd-<version>.zip` ready to publish. No entitlements are needed: the hardened runtime's restrictions (library validation, no JIT, no unsigned memory) don't touch anything this app does, and Accessibility is granted by the user at runtime, not by entitlement.
+
+`Packaging/AppIcon.icns` is the app icon; replace `Packaging/AppIcon-1024.png` and run `make icon` to regenerate it.
+
+### Homebrew
+
+A cask lives at `Packaging/homebrew/rightcmd.rb`. It's a cask rather than a formula because the artifact is a prebuilt, notarized `.app`, not something Homebrew compiles. Releasing goes:
+
+1. `make dist` → `build/RightCmd-<version>.zip`. (`make app` produces the same zip from an ad‑hoc build, enough to exercise the cask, but Gatekeeper will refuse an unsigned download on other Macs unless they install with `--no-quarantine`; use `make dist` for anything you publish.)
+2. Create a GitHub release tagged `v<version>` and attach that zip, unrenamed.
+3. `make cask REPO=you/RightCmd TAP=you/tap` — rewrites the cask with the version from `Info.plist` and the zip's SHA‑256, copies it into a local tap (created with `brew tap-new` if needed), and runs `brew audit --cask --strict` and `brew style` on it. Homebrew only audits and installs casks that live in a tap, not loose files, which is why the local tap exists.
+4. Commit and push the tap directory (`$(brew --repository)/Library/Taps/you/homebrew-tap`) to a GitHub repo named `homebrew-tap`.
+
+Users then install with `brew install --cask you/tap/rightcmd`, and `brew upgrade` follows your releases; the cask's `livecheck` block lets `brew livecheck` notice new tags. Homebrew's main cask repository has a notability threshold (roughly 30+ stars or forks and a release history), so a personal tap is the right starting point; the same file moves there unchanged if the app later qualifies.
+
+Continuous integration: `.github/workflows/ci.yml` builds, tests and assembles an ad‑hoc bundle on a macOS 26 runner for every push and pull request. Signing and notarization stay local on purpose — they need your certificate and credentials.
 
 Or open the package in Xcode (`open Package.swift`) for day‑to‑day development, or generate a full Xcode project with `make xcodeproj` (requires [XcodeGen](https://github.com/yonaskolb/XcodeGen)).
 
