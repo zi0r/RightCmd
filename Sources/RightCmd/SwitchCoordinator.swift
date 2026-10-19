@@ -16,11 +16,11 @@ final class SwitchCoordinator {
 
     private var session: SwitchSession!
     private var tap: KeyboardEventTap?
-    /// True from the right ⌘ press we handled until its release. While true every key
+    /// True from the activator press we handled until its release. While true every key
     /// event is swallowed so letters never reach the frontmost app (⌘S must not save).
     private var activatorHeld = false
-    /// Verifies against the live HID modifier state that right ⌘ is really still down,
-    /// so a missed release can never leave the keyboard swallowed.
+    /// Verifies against the live HID modifier state that the activator is really still
+    /// down, so a missed release can never leave the keyboard swallowed.
     private var heldWatchdog: Timer?
     /// Whether the right ⌘ *press* was delivered to apps. Decided once per hold so the
     /// release is handled the same way even if the setting changes mid-hold; apps must
@@ -114,11 +114,15 @@ final class SwitchCoordinator {
         )
     }
 
+    /// The configured key (right ⌘/⌥/⌃). Distinct from `activator`, the app-activation
+    /// strategy.
+    private var activatorKey: ActivatorModifier { settingsStore.settings.activator }
+
     /// Returns true if the event should be swallowed.
     private func handle(_ event: TapEvent) -> Bool {
         switch event {
         case .flagsChanged(let keyCode, let flags):
-            switch ActivatorKey.change(forFlagsChangedKeyCode: keyCode, flags: flags) {
+            switch ActivatorKey.change(forFlagsChangedKeyCode: keyCode, flags: flags, activator: activatorKey) {
             case .pressed:
                 guard !activatorHeld else { return !activatorEventDelivered }
                 activatorEventDelivered = settingsStore.settings.passThroughActivatorModifier
@@ -131,8 +135,8 @@ final class SwitchCoordinator {
             case .none:
                 // Another modifier changed. If ⌘ is no longer reported at all, the release
                 // we were waiting for has been lost; let go now and pass this event on.
-                if activatorHeld, !ActivatorKey.isRightCommandHeld(flags) {
-                    releaseActivator(reason: "flags no longer include ⌘")
+                if activatorHeld, !ActivatorKey.isHeld(flags, activator: activatorKey) {
+                    releaseActivator(reason: "flags no longer include \(activatorKey.symbol)")
                 } else if activatorHeld {
                     updateModifierPassThrough(flags: flags)
                 }
@@ -141,9 +145,9 @@ final class SwitchCoordinator {
 
         case .keyDown(let keyCode, let flags, let isRepeat):
             guard activatorHeld else { return false }
-            guard ActivatorKey.isRightCommandHeld(flags) else {
-                // Same self-heal as above: a key arrived without ⌘, so it isn't ours.
-                releaseActivator(reason: "key down without ⌘")
+            guard ActivatorKey.isHeld(flags, activator: activatorKey) else {
+                // Same self-heal as above: a key arrived without the activator, so it isn't ours.
+                releaseActivator(reason: "key down without \(activatorKey.symbol)")
                 return false
             }
             if KeyPassThrough.passes(keyCode: keyCode, flags: flags, settings: settingsStore.settings) {
@@ -155,7 +159,7 @@ final class SwitchCoordinator {
                 }
                 return false
             }
-            if isRepeat || ActivatorKey.blocksTyping(flags) {
+            if isRepeat || ActivatorKey.blocksTyping(flags, activator: activatorKey) {
                 return true
             }
             let character = translator.character(forKeyCode: keyCode)
@@ -181,7 +185,7 @@ final class SwitchCoordinator {
             if KeyPassThrough.passes(keyCode: keyCode, flags: flags, settings: settingsStore.settings) {
                 return false
             }
-            return ActivatorKey.isRightCommandHeld(flags)
+            return ActivatorKey.isHeld(flags, activator: activatorKey)
 
         case .tapDisabled:
             cancelSession()
@@ -193,7 +197,7 @@ final class SwitchCoordinator {
         activatorHeld = true
         heldPassThroughKeys = []
         modifierPassThroughActive = false
-        Log.session.debug("Right ⌘ down")
+        Log.session.debug("\(self.activatorKey.name, privacy: .public) down")
         perform(session.handle(.activatorPressed))
         reportIconState(.listening)
         // ⇧ may already be down when right ⌘ arrives.
@@ -204,7 +208,7 @@ final class SwitchCoordinator {
     private func releaseActivator(reason: String) {
         stopWatchdog()
         activatorHeld = false
-        Log.session.debug("Right ⌘ up (\(reason, privacy: .public))")
+        Log.session.debug("\(self.activatorKey.name, privacy: .public) up (\(reason, privacy: .public))")
         let actions = session.handle(.activatorReleased)
         perform(actions)
         if actions.contains(where: Self.isActivation) {
@@ -237,8 +241,8 @@ final class SwitchCoordinator {
             return
         }
         let live = ModifierFlags(rawValue: CGEventSource.flagsState(.hidSystemState).rawValue)
-        if !ActivatorKey.isRightCommandHeld(live) {
-            releaseActivator(reason: "watchdog: HID state shows ⌘ up")
+        if !ActivatorKey.isHeld(live, activator: activatorKey) {
+            releaseActivator(reason: "watchdog: HID state shows \(activatorKey.symbol) up")
         }
     }
 
@@ -269,7 +273,7 @@ final class SwitchCoordinator {
     }
 
     private func updateModifierPassThrough(flags: ModifierFlags) {
-        let active = settingsStore.settings.passThroughModifiedKeys && KeyPassThrough.hasExtraModifier(flags)
+        let active = settingsStore.settings.passThroughModifiedKeys && KeyPassThrough.hasExtraModifier(flags, activator: activatorKey)
         guard active != modifierPassThroughActive else { return }
         modifierPassThroughActive = active
         refreshIcon()

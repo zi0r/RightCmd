@@ -1,8 +1,10 @@
 # Changelog
 
-## Unreleased
+## 1.0.3 — 2026-10-18
 
 ### Added
+- **Choice of activator key**: right ⌘ (default), right ⌥ or right ⌃, in Settings › General.
+  Modifier handling, pass‑through rules and the menu bar tint all follow the chosen key.
 - **Alternate names**: apps are matched under their bundle file name and Info.plist names
   as well as the localized name, so localised and renamed apps answer to both. Exclusion
   and priority patterns match those names too.

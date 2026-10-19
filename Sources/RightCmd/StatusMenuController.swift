@@ -52,7 +52,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
 
         if let button = item.button {
             button.image = Self.symbol(Self.idleSymbol)
-            button.toolTip = "RightCmd — hold right ⌘ and type an app’s name"
+            button.toolTip = "RightCmd — hold \(settingsStore.settings.activator.name) and type an app’s name"
         }
         menu.delegate = self
         menu.autoenablesItems = false
@@ -65,6 +65,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         menu.removeAllItems()
         let status = statusProvider()
         let settings = settingsStore.settings
+        item.button?.toolTip = "RightCmd — hold \(settings.activator.name) and type an app’s name"
 
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev"
         menu.addItem(disabled("RightCmd \(version)"))
@@ -77,7 +78,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         } else if !status.enabled {
             statusText = "Paused"
         } else if status.tapRunning {
-            statusText = "Active — hold right ⌘ and type"
+            statusText = "Active — hold \(settings.activator.name) and type"
         } else {
             statusText = "Starting…"
         }
@@ -240,7 +241,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
     static func title(for mode: SwitchMode) -> String {
         switch mode {
         case .live: return "As You Type"
-        case .onRelease: return "When Right ⌘ Is Released"
+        case .onRelease: return "When the Key Is Released"
         }
     }
 

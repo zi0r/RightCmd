@@ -153,6 +153,72 @@ final class ActivatorKeyTests: XCTestCase {
     }
 }
 
+final class ActivatorModifierTests: XCTestCase {
+    func testKeyCodesAndFlags() {
+        XCTAssertEqual(ActivatorModifier.rightCommand.keyCode, 0x36)
+        XCTAssertEqual(ActivatorModifier.rightOption.keyCode, 0x3D)
+        XCTAssertEqual(ActivatorModifier.rightControl.keyCode, 0x3E)
+        XCTAssertEqual(ActivatorModifier.rightOption.flag, .option)
+        XCTAssertEqual(ActivatorModifier.rightOption.leftDeviceFlag, .leftOptionDevice)
+        XCTAssertEqual(ActivatorModifier.rightOption.rightDeviceFlag, .rightOptionDevice)
+        XCTAssertEqual(ActivatorModifier.rightOption.name, "right ⌥")
+    }
+
+    func testRightOptionPressAndRelease() {
+        let opt = ActivatorModifier.rightOption
+        XCTAssertEqual(ActivatorKey.change(forFlagsChangedKeyCode: KeyCode.rightOption, flags: [.option, .rightOptionDevice], activator: opt), .pressed)
+        XCTAssertEqual(ActivatorKey.change(forFlagsChangedKeyCode: KeyCode.rightOption, flags: [], activator: opt), .released)
+        XCTAssertEqual(ActivatorKey.change(forFlagsChangedKeyCode: KeyCode.rightOption, flags: [.option, .leftOptionDevice], activator: opt), .released, "left ⌥ still held")
+        XCTAssertEqual(ActivatorKey.change(forFlagsChangedKeyCode: KeyCode.rightCommand, flags: [.command, .rightCommandDevice], activator: opt), .none, "right ⌘ is just another modifier now")
+        XCTAssertEqual(ActivatorKey.change(forFlagsChangedKeyCode: KeyCode.rightOption, flags: [.option], activator: .rightCommand), .none)
+    }
+
+    func testIsHeldPerActivator() {
+        XCTAssertTrue(ActivatorKey.isHeld([.option, .rightOptionDevice], activator: .rightOption))
+        XCTAssertFalse(ActivatorKey.isHeld([.command, .rightCommandDevice], activator: .rightOption))
+        XCTAssertTrue(ActivatorKey.isHeld([.control, .rightControlDevice], activator: .rightControl))
+        XCTAssertFalse(ActivatorKey.isHeld([.control, .leftControlDevice], activator: .rightControl))
+    }
+
+    func testBlocksTypingIsRelativeToTheActivator() {
+        // With right ⌥ active: ⌘ and ⌃ block, ⌥'s own flag doesn't, left ⌥ does, ⇧ never.
+        XCTAssertFalse(ActivatorKey.blocksTyping([.option, .rightOptionDevice], activator: .rightOption))
+        XCTAssertFalse(ActivatorKey.blocksTyping([.option, .rightOptionDevice, .shift], activator: .rightOption))
+        XCTAssertTrue(ActivatorKey.blocksTyping([.option, .rightOptionDevice, .command], activator: .rightOption))
+        XCTAssertTrue(ActivatorKey.blocksTyping([.option, .rightOptionDevice, .control], activator: .rightOption))
+        XCTAssertTrue(ActivatorKey.blocksTyping([.option, .rightOptionDevice, .leftOptionDevice], activator: .rightOption))
+        // And the default is unchanged.
+        XCTAssertTrue(ActivatorKey.blocksTyping([.command, .rightCommandDevice, .option], activator: .rightCommand))
+    }
+
+    func testExtraModifierIsRelativeToTheActivator() {
+        XCTAssertFalse(KeyPassThrough.hasExtraModifier([.option, .rightOptionDevice], activator: .rightOption))
+        XCTAssertTrue(KeyPassThrough.hasExtraModifier([.option, .rightOptionDevice, .shift], activator: .rightOption))
+        XCTAssertTrue(KeyPassThrough.hasExtraModifier([.option, .rightOptionDevice, .command], activator: .rightOption))
+        XCTAssertTrue(KeyPassThrough.hasExtraModifier([.option, .rightOptionDevice, .leftOptionDevice], activator: .rightOption))
+    }
+
+    func testPassThroughUsesTheConfiguredActivator() {
+        var settings = Settings()
+        settings.activator = .rightOption
+        settings.passThroughModifiedKeys = true
+        let rightOpt: ModifierFlags = [.option, .rightOptionDevice]
+        XCTAssertFalse(KeyPassThrough.passes(keyCode: 35, flags: rightOpt, settings: settings), "right ⌥ alone is ours")
+        XCTAssertTrue(KeyPassThrough.passes(keyCode: 35, flags: rightOpt.union([.command]), settings: settings), "⌥⌘P passes")
+        XCTAssertTrue(KeyPassThrough.passes(keyCode: 35, flags: rightOpt.union([.shift]), settings: settings))
+    }
+
+    func testSettingDefaultsAndRoundTrip() throws {
+        XCTAssertEqual(Settings.default.activator, .rightCommand)
+        var s = Settings()
+        s.activator = .rightOption
+        let data = try JSONEncoder().encode(s)
+        XCTAssertEqual(try JSONDecoder().decode(Settings.self, from: data).activator, .rightOption)
+        let bad = #"{"activator":"leftPinky"}"#.data(using: .utf8)!
+        XCTAssertEqual(try JSONDecoder().decode(Settings.self, from: bad).activator, .rightCommand)
+    }
+}
+
 final class WildcardPatternTests: XCTestCase {
     func testLiteralMatchIsCaseInsensitive() {
         XCTAssertTrue(WildcardPattern("Safari").matches("safari"))

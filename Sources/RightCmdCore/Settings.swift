@@ -16,6 +16,8 @@ public enum OverlayPosition: String, Codable, CaseIterable, Sendable {
 }
 
 public struct Settings: Codable, Equatable, Sendable {
+    /// The key that starts a switch. Right ⌘ by default.
+    public var activator: ActivatorModifier = .rightCommand
     public var switchMode: SwitchMode = .live
     public var matchWordPrefixes: Bool = true
     public var matchInitials: Bool = true
@@ -112,7 +114,7 @@ public struct Settings: Codable, Equatable, Sendable {
     // after new fields are added, and a corrupt single value doesn't discard everything.
 
     private enum CodingKeys: String, CodingKey {
-        case switchMode, matchWordPrefixes, matchInitials, skipFrontmostApp
+        case activator, switchMode, matchWordPrefixes, matchInitials, skipFrontmostApp
         case commitOnUniqueMatch, movePointerToWindow, instantSpaceSwitching
         case passThroughLeftRightArrows, passThroughSpace, passThroughModifiedKeys, passThroughActivatorModifier
         case showOverlay, overlayPosition, tintMenuBarIcon, iconColors
@@ -122,6 +124,7 @@ public struct Settings: Codable, Equatable, Sendable {
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         let defaults = Settings()
+        activator = (try? c.decodeIfPresent(ActivatorModifier.self, forKey: .activator)) ?? defaults.activator
         switchMode = (try? c.decodeIfPresent(SwitchMode.self, forKey: .switchMode)) ?? defaults.switchMode
         matchWordPrefixes = (try? c.decodeIfPresent(Bool.self, forKey: .matchWordPrefixes)) ?? defaults.matchWordPrefixes
         matchInitials = (try? c.decodeIfPresent(Bool.self, forKey: .matchInitials)) ?? defaults.matchInitials
@@ -146,6 +149,7 @@ public struct Settings: Codable, Equatable, Sendable {
 
     public func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(activator, forKey: .activator)
         try c.encode(switchMode, forKey: .switchMode)
         try c.encode(matchWordPrefixes, forKey: .matchWordPrefixes)
         try c.encode(matchInitials, forKey: .matchInitials)

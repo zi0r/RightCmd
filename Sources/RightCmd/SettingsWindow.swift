@@ -183,9 +183,23 @@ private struct Hint: View {
 struct GeneralPane: View {
     @ObservedObject var model: SettingsModel
 
+    private var key: String { model.settings.activator.symbol }
+    private var keyName: String { model.settings.activator.name }
+
     var body: some View {
         SettingsPane {
             SettingsGroup(title: "Switching") {
+                HStack {
+                    Text("Hold this key to switch:")
+                    Picker("", selection: $model.settings.activator) {
+                        ForEach(ActivatorModifier.allCases, id: \.self) { key in
+                            Text(key.displayName).tag(key)
+                        }
+                    }
+                    .labelsHidden()
+                    .fixedSize()
+                }
+                Hint("The key becomes dedicated to switching while held; its left-hand twin is unaffected. The change applies on the next press.")
                 Text("Switch to the app:")
                 Picker("", selection: $model.settings.switchMode) {
                     ForEach(SwitchMode.allCases, id: \.self) { mode in
@@ -199,13 +213,13 @@ struct GeneralPane: View {
                 Toggle("Move the pointer to the window you switch to", isOn: $model.settings.movePointerToWindow)
                 Hint("Happens once per hold, as soon as the switch is settled; not if the pointer is already in that window, and not after Escape.")
                 Toggle("Let ← and → reach the system", isOn: $model.settings.passThroughLeftRightArrows)
-                Hint("For ⌘← / ⌘→ Space shortcuts bound in System Settings › Keyboard › Shortcuts › Mission Control. ↑ and ↓ still cycle between matches.")
+                Hint("For \(key)← / \(key)→ Space shortcuts bound in System Settings › Keyboard › Shortcuts › Mission Control. ↑ and ↓ still cycle between matches.")
                 Toggle("Let Space reach the system", isOn: $model.settings.passThroughSpace)
-                Hint("For ⌘Space launchers such as Spotlight, Raycast or Alfred.")
-                Toggle("Pass through keys pressed with Shift, Option or Control", isOn: $model.settings.passThroughModifiedKeys)
-                Hint("Lets shortcuts like ⌘⇧P reach the front app while right ⌘ is held. With this on, type app names with right ⌘ alone (Shift is no longer ignored).")
-                Toggle("Let apps see right ⌘ itself", isOn: $model.settings.passThroughActivatorModifier)
-                Hint("Delivers the modifier press and release, for apps that react to ⌘ being held (link underlining, temporary tool modes). Leave off unless a pass-through shortcut misbehaves; it also triggers “double-tap ⌘” launchers.")
+                Hint("For \(key)Space launchers such as Spotlight, Raycast or Alfred.")
+                Toggle("Pass through keys pressed with another modifier", isOn: $model.settings.passThroughModifiedKeys)
+                Hint("Lets shortcuts like \(key)⇧P reach the front app while \(keyName) is held. With this on, type app names with \(keyName) alone (Shift is no longer ignored).")
+                Toggle("Let apps see \(keyName) itself", isOn: $model.settings.passThroughActivatorModifier)
+                Hint("Delivers the modifier press and release, for apps that react to \(key) being held (link underlining, temporary tool modes). Leave off unless a pass-through shortcut misbehaves; it also triggers “double-tap” launchers bound to that key.")
                 Toggle("Switch Spaces instantly", isOn: $model.settings.instantSpaceSwitching)
                     .disabled(!SpaceSwitcher.isAvailable)
                 Hint(SpaceSwitcher.isAvailable
@@ -234,7 +248,7 @@ struct GeneralPane: View {
                     Spacer()
                     Button("Open System Settings…") { AccessibilityPermission.openSystemSettings() }
                 }
-                Hint("RightCmd needs Accessibility access to see the right ⌘ key and bring apps to the front.")
+                Hint("RightCmd needs Accessibility access to see the \(keyName) key and bring apps to the front.")
             }
         }
     }
@@ -450,7 +464,7 @@ struct AppearancePane: View {
             }
 
             SettingsGroup(title: "Menu bar icon") {
-                Toggle("Tint the icon while right ⌘ is held", isOn: $model.settings.tintMenuBarIcon)
+                Toggle("Tint the icon while \(model.settings.activator.name) is held", isOn: $model.settings.tintMenuBarIcon)
                 Hint("The colour stays for a moment after you let go, so the result of a quick switch is still visible.")
                 Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 8) {
                     colorRow("Listening (nothing typed yet)", \.listening)
