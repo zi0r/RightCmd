@@ -244,6 +244,8 @@ final class SettingsTests: XCTestCase {
         XCTAssertTrue(s.priorityList.isEmpty)
         XCTAssertEqual(s.deprioritizedPatterns, [])
         XCTAssertTrue(s.deprioritizedList.isEmpty)
+        XCTAssertEqual(s.appAliases, [])
+        XCTAssertTrue(s.aliasList.isEmpty)
     }
 
     func testFinderIsExcludedByDefault() {
@@ -293,6 +295,7 @@ final class SettingsTests: XCTestCase {
         s.excludedPatterns = ["com.apple.*", "Slack"]
         s.priorityPatterns = ["Xcode", "com.google.*"]
         s.deprioritizedPatterns = ["Safari"]
+        s.appAliases = [AppAlias(pattern: "com.microsoft.rdc.macos", names: ["Microsoft Remote Desktop", "RDP"])]
         s.includeFinder = true
         let data = try JSONEncoder().encode(s)
         let decoded = try JSONDecoder().decode(Settings.self, from: data)
@@ -332,11 +335,13 @@ final class SettingsTests: XCTestCase {
         s.matchWordPrefixes = false
         s.priorityPatterns = ["Slack"]
         s.deprioritizedPatterns = ["Safari"]
+        s.appAliases = [AppAlias(pattern: "Xcode", names: ["IDE"])]
         XCTAssertEqual(s.matchOptions, MatchOptions(
             wordPrefixes: false,
             initials: true,
             priority: PriorityList(patterns: ["Slack"]),
-            deprioritized: PriorityList(patterns: ["Safari"])
+            deprioritized: PriorityList(patterns: ["Safari"]),
+            aliases: AliasList([AppAlias(pattern: "Xcode", names: ["IDE"])])
         ))
     }
 }

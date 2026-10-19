@@ -61,6 +61,8 @@ public struct Settings: Codable, Equatable, Sendable {
     public var priorityPatterns: [String] = []
     /// Apps that rank after all other matches but stay switchable; among them, list order.
     public var deprioritizedPatterns: [String] = []
+    /// Extra names to match apps under, e.g. "Microsoft Remote Desktop" for Windows App.
+    public var appAliases: [AppAlias] = []
     /// Finder is always running and always wins "F", so it is left out unless asked for.
     /// Kept separate from `excludedPatterns` so the default can change without migrating
     /// user data and so re-enabling it is a single switch.
@@ -75,8 +77,13 @@ public struct Settings: Codable, Equatable, Sendable {
             wordPrefixes: matchWordPrefixes,
             initials: matchInitials,
             priority: priorityList,
-            deprioritized: deprioritizedList
+            deprioritized: deprioritizedList,
+            aliases: aliasList
         )
+    }
+
+    public var aliasList: AliasList {
+        AliasList(appAliases)
     }
 
     public var priorityList: PriorityList {
@@ -109,7 +116,7 @@ public struct Settings: Codable, Equatable, Sendable {
         case commitOnUniqueMatch, movePointerToWindow, instantSpaceSwitching
         case passThroughLeftRightArrows, passThroughSpace, passThroughModifiedKeys, passThroughActivatorModifier
         case showOverlay, overlayPosition, tintMenuBarIcon, iconColors
-        case excludedPatterns, includeFinder, priorityPatterns, deprioritizedPatterns
+        case excludedPatterns, includeFinder, priorityPatterns, deprioritizedPatterns, appAliases
     }
 
     public init(from decoder: Decoder) throws {
@@ -134,6 +141,7 @@ public struct Settings: Codable, Equatable, Sendable {
         includeFinder = (try? c.decodeIfPresent(Bool.self, forKey: .includeFinder)) ?? defaults.includeFinder
         priorityPatterns = (try? c.decodeIfPresent([String].self, forKey: .priorityPatterns)) ?? defaults.priorityPatterns
         deprioritizedPatterns = (try? c.decodeIfPresent([String].self, forKey: .deprioritizedPatterns)) ?? defaults.deprioritizedPatterns
+        appAliases = (try? c.decodeIfPresent([AppAlias].self, forKey: .appAliases)) ?? defaults.appAliases
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -157,6 +165,7 @@ public struct Settings: Codable, Equatable, Sendable {
         try c.encode(includeFinder, forKey: .includeFinder)
         try c.encode(priorityPatterns, forKey: .priorityPatterns)
         try c.encode(deprioritizedPatterns, forKey: .deprioritizedPatterns)
+        try c.encode(appAliases, forKey: .appAliases)
     }
 }
 

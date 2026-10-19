@@ -24,9 +24,6 @@ public struct PriorityList: Equatable, Sendable {
     /// The position of the first pattern that matches the candidate (0 = highest priority),
     /// or nil if the candidate is not prioritised.
     public func rank(of candidate: AppCandidate) -> Int? {
-        patterns.firstIndex { pattern in
-            pattern.matches(candidate.name)
-                || (candidate.bundleIdentifier.map(pattern.matches) ?? false)
-        }
+        patterns.firstIndex { $0.matches(candidate) }
     }
 }

@@ -3,6 +3,12 @@
 ## Unreleased
 
 ### Added
+- **Alternate names**: apps are matched under their bundle file name and Info.plist names
+  as well as the localized name, so localised and renamed apps answer to both. Exclusion
+  and priority patterns match those names too.
+- **Aliases** (Settings › Matching): user-defined extra names per app, by bundle id or
+  pattern; the overlay shows which alias a match came through. The priority and
+  deprioritized lists moved to their own Priorities tab.
 - A fourth icon colour, **Passing keys through** (orange by default), shown while a
   pass‑through key is down or a pass‑through modifier combination is held; the icon
   returns to the session colour when that ends. Saved colour sets from earlier versions

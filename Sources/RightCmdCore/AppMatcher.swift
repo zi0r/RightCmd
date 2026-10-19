@@ -13,17 +13,21 @@ public struct MatchOptions: Equatable, Sendable {
     /// Apps that rank after all other matches (still switchable), in order. An app on both
     /// lists is treated as prioritised.
     public var deprioritized: PriorityList
+    /// Extra names to match apps under. See `AliasList`.
+    public var aliases: AliasList
 
     public init(
         wordPrefixes: Bool = true,
         initials: Bool = true,
         priority: PriorityList = .empty,
-        deprioritized: PriorityList = .empty
+        deprioritized: PriorityList = .empty,
+        aliases: AliasList = .empty
     ) {
         self.wordPrefixes = wordPrefixes
         self.initials = initials
         self.priority = priority
         self.deprioritized = deprioritized
+        self.aliases = aliases
     }
 }
 
@@ -65,6 +69,13 @@ public struct RankedMatch: Equatable, Sendable {
     public let candidate: AppCandidate
     public let tier: MatchTier
     public let placement: MatchPlacement
+    /// The name the match was made on: the app's own name, an alternate name macOS
+    /// has for it, or a user alias. Equal to `candidate.name` for an ordinary match.
+    public let matchedName: String
+
+    /// True when the match came through an alternate name or alias rather than the
+    /// app's own name.
+    public var matchedViaAlias: Bool { matchedName != candidate.name }
 
     /// Position in the user's priority list, or nil if not prioritised.
     public var priorityRank: Int? {
@@ -100,21 +111,22 @@ public enum AppMatcher {
             let candidate: AppCandidate
             let tier: MatchTier
             let placement: MatchPlacement
+            let matchedName: String
             let foldedName: String
         }
 
         var scored: [Scored] = []
         scored.reserveCapacity(candidates.count)
         for candidate in candidates {
-            let foldedName = StringNormalization.fold(candidate.name)
-            guard let tier = tier(forFoldedName: foldedName, query: foldedQuery, options: options) else {
+            guard let best = bestMatch(for: candidate, query: foldedQuery, options: options) else {
                 continue
             }
             scored.append(Scored(
                 candidate: candidate,
-                tier: tier,
+                tier: best.tier,
                 placement: placement(of: candidate, options: options),
-                foldedName: foldedName
+                matchedName: best.name,
+                foldedName: StringNormalization.fold(candidate.name)
             ))
         }
 
@@ -129,7 +141,9 @@ public enum AppMatcher {
             return lhs.candidate.id < rhs.candidate.id
         }
 
-        return scored.map { RankedMatch(candidate: $0.candidate, tier: $0.tier, placement: $0.placement) }
+        return scored.map {
+            RankedMatch(candidate: $0.candidate, tier: $0.tier, placement: $0.placement, matchedName: $0.matchedName)
+        }
     }
 
     /// Convenience: the matching candidates only, best first.
@@ -139,6 +153,26 @@ public enum AppMatcher {
         options: MatchOptions = MatchOptions()
     ) -> [AppCandidate] {
         rankedMatches(for: query, in: candidates, options: options).map(\.candidate)
+    }
+
+    /// The best tier across the app's own name, its alternate names and any user aliases,
+    /// with the name that achieved it. Ties go to the earliest name, so the app's own name
+    /// wins whenever it matches as well as an alias does.
+    static func bestMatch(for candidate: AppCandidate, query: String, options: MatchOptions) -> (tier: MatchTier, name: String)? {
+        var best: (tier: MatchTier, name: String)?
+        for name in candidate.allNames + options.aliases.names(for: candidate) {
+            guard let tier = tier(forFoldedName: StringNormalization.fold(name), query: query, options: options) else {
+                continue
+            }
+            if let current = best, tier >= current.tier {
+                continue
+            }
+            best = (tier, name)
+            if tier == .namePrefix {
+                break   // can't do better
+            }
+        }
+        return best
     }
 
     /// Priority wins over deprioritisation when an app is on both lists.

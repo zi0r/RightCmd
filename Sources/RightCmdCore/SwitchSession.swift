@@ -15,6 +15,9 @@ public struct OverlayState: Equatable, Sendable {
     public var prioritizedIDs: Set<Int32>
     /// The ids of matches that are on the user's deprioritized list.
     public var deprioritizedIDs: Set<Int32>
+    /// For matches made through an alternate name or alias, the name that matched, so the
+    /// overlay can explain why the app is listed.
+    public var matchedAliases: [Int32: String]
 
     public init(
         query: String,
@@ -22,7 +25,8 @@ public struct OverlayState: Equatable, Sendable {
         selectedIndex: Int?,
         secureInputActive: Bool,
         prioritizedIDs: Set<Int32> = [],
-        deprioritizedIDs: Set<Int32> = []
+        deprioritizedIDs: Set<Int32> = [],
+        matchedAliases: [Int32: String] = [:]
     ) {
         self.query = query
         self.matches = matches
@@ -30,6 +34,7 @@ public struct OverlayState: Equatable, Sendable {
         self.secureInputActive = secureInputActive
         self.prioritizedIDs = prioritizedIDs
         self.deprioritizedIDs = deprioritizedIDs
+        self.matchedAliases = matchedAliases
     }
 
     public var selected: AppCandidate? {
@@ -103,6 +108,7 @@ public final class SwitchSession {
     private var matches: [AppCandidate] = []
     private var prioritizedIDs: Set<Int32> = []
     private var deprioritizedIDs: Set<Int32> = []
+    private var matchedAliases: [Int32: String] = [:]
     private var selectedIndex: Int?
     private var overlayVisible = false
     /// The app most recently activated in this session, to avoid re-activating it.
@@ -179,6 +185,7 @@ public final class SwitchSession {
         matches = []
         prioritizedIDs = []
         deprioritizedIDs = []
+        matchedAliases = [:]
         selectedIndex = nil
         return actions
     }
@@ -190,6 +197,7 @@ public final class SwitchSession {
         matches = []
         prioritizedIDs = []
         deprioritizedIDs = []
+        matchedAliases = [:]
         selectedIndex = nil
         lastActivated = nil
         return actions
@@ -279,6 +287,10 @@ public final class SwitchSession {
         matches = ranked.map(\.candidate)
         prioritizedIDs = Set(ranked.filter { $0.priorityRank != nil }.map(\.candidate.id))
         deprioritizedIDs = Set(ranked.filter { $0.deprioritizedRank != nil }.map(\.candidate.id))
+        matchedAliases = Dictionary(
+            ranked.filter(\.matchedViaAlias).map { ($0.candidate.id, $0.matchedName) },
+            uniquingKeysWith: { first, _ in first }
+        )
         guard !matches.isEmpty else {
             selectedIndex = nil
             return
@@ -327,7 +339,8 @@ public final class SwitchSession {
             selectedIndex: selectedIndex,
             secureInputActive: context.secureInputActive,
             prioritizedIDs: prioritizedIDs,
-            deprioritizedIDs: deprioritizedIDs
+            deprioritizedIDs: deprioritizedIDs,
+            matchedAliases: matchedAliases
         )
         return [.showOverlay(state)]
     }

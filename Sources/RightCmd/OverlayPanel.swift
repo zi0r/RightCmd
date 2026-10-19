@@ -61,7 +61,8 @@ struct OverlayView: View {
                     item.element,
                     isSelected: item.offset == state.selectedIndex,
                     isPrioritized: state.prioritizedIDs.contains(item.element.id),
-                    isDeprioritized: state.deprioritizedIDs.contains(item.element.id)
+                    isDeprioritized: state.deprioritizedIDs.contains(item.element.id),
+                    matchedAlias: state.matchedAliases[item.element.id]
                 )
             }
             if state.matches.count > maxVisibleMatches {
@@ -73,7 +74,7 @@ struct OverlayView: View {
         }
     }
 
-    private func matchRow(_ app: AppCandidate, isSelected: Bool, isPrioritized: Bool, isDeprioritized: Bool) -> some View {
+    private func matchRow(_ app: AppCandidate, isSelected: Bool, isPrioritized: Bool, isDeprioritized: Bool, matchedAlias: String?) -> some View {
         HStack(spacing: 10) {
             if let image = icon(app) {
                 Image(nsImage: image)
@@ -83,11 +84,20 @@ struct OverlayView: View {
                 Image(systemName: "app.dashed")
                     .frame(width: 28, height: 28)
             }
-            Text(app.name)
-                .font(isSelected ? Font.title3.weight(.semibold) : Font.title3)
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .frame(maxWidth: 360, alignment: .leading)
+            VStack(alignment: .leading, spacing: 0) {
+                Text(app.name)
+                    .font(isSelected ? Font.title3.weight(.semibold) : Font.title3)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                if let matchedAlias {
+                    // Why this app is listed: the match was on another of its names.
+                    Text("as “\(matchedAlias)”")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            .frame(maxWidth: 360, alignment: .leading)
             if isPrioritized {
                 Image(systemName: "pin.fill")
                     .font(.caption)

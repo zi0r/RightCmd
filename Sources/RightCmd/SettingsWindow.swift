@@ -87,6 +87,35 @@ final class SettingsModel: ObservableObject {
         displayName(forPattern: pattern) != pattern
     }
 
+    // MARK: Alias editing
+
+    func addAlias(forPattern raw: String) {
+        let pattern = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !pattern.isEmpty else { return }
+        guard !settings.appAliases.contains(where: { $0.pattern.caseInsensitiveCompare(pattern) == .orderedSame }) else { return }
+        settings.appAliases.append(AppAlias(pattern: pattern, names: []))
+    }
+
+    func addAlias(for app: AppCandidate) {
+        addAlias(forPattern: app.bundleIdentifier ?? app.name)
+    }
+
+    func removeAlias(withPattern pattern: String) {
+        settings.appAliases.removeAll { $0.pattern == pattern }
+    }
+
+    /// Parses a comma-separated list of names into the entry with this pattern.
+    func setAliasNames(forPattern pattern: String, from text: String) {
+        guard let index = settings.appAliases.firstIndex(where: { $0.pattern == pattern }) else { return }
+        let names = text
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        if settings.appAliases[index].names != names {
+            settings.appAliases[index].names = names
+        }
+    }
+
     /// A `ColorPicker` binding for one of the icon colours. A picker can hand back a colour
     /// with no RGB form (e.g. a pattern); those are ignored and the previous value stays.
     func iconColorBinding(_ keyPath: WritableKeyPath<IconColors, SRGBColor>) -> Binding<Color> {
@@ -221,8 +250,22 @@ struct MatchingPane: View {
                     .disabled(true)
                 Toggle("The start of any later word (“c” finds Google Chrome)", isOn: $model.settings.matchWordPrefixes)
                 Toggle("Initials (“vsc” finds Visual Studio Code)", isOn: $model.settings.matchInitials)
+                Hint("Each app is also matched under the other names macOS has for it (its bundle file name and Info.plist names), so localised or renamed apps answer to both.")
             }
 
+            SettingsGroup(title: "Aliases") {
+                Hint("Extra names to match an app under, for apps whose name isn’t what you think of (Windows App ← “Microsoft Remote Desktop”, “RDP”). Aliases match exactly like the real name, and the overlay shows which alias matched.")
+                AliasListEditor(model: model)
+            }
+        }
+    }
+}
+
+struct PrioritiesPane: View {
+    @ObservedObject var model: SettingsModel
+
+    var body: some View {
+        SettingsPane {
             SettingsGroup(title: "Priority apps") {
                 Hint("Apps on this list outrank every other match, top first. They still have to match what you type; priority only settles the order.")
                 PatternListEditor(model: model, list: \.priorityPatterns, emptyText: "No priority apps yet.")
@@ -233,6 +276,85 @@ struct MatchingPane: View {
                 PatternListEditor(model: model, list: \.deprioritizedPatterns, emptyText: "No deprioritized apps yet.")
             }
         }
+    }
+}
+
+/// Alias entries: one row per app pattern with a comma-separated names field.
+private struct AliasListEditor: View {
+    @ObservedObject var model: SettingsModel
+    @State private var draft: String = ""
+
+    var body: some View {
+        List {
+            if model.settings.appAliases.isEmpty {
+                Text("No aliases yet.")
+                    .foregroundStyle(.secondary)
+            }
+            // Identified by pattern (unique) so a row keeps its edit state when rows above
+            // it are removed.
+            ForEach(model.settings.appAliases, id: \.pattern) { alias in
+                AliasRow(model: model, alias: alias)
+            }
+        }
+        .listStyle(.bordered(alternatesRowBackgrounds: true))
+        .frame(height: 150)
+
+        HStack {
+            Menu("Add Running App") {
+                ForEach(model.runningApps, id: \.id) { app in
+                    Button(app.name) { model.addAlias(for: app) }
+                }
+            }
+            .fixedSize()
+            TextField("or a name / bundle id pattern", text: $draft)
+                .textFieldStyle(.roundedBorder)
+                .onSubmit { addDraft() }
+            Button("Add") { addDraft() }
+                .disabled(draft.trimmingCharacters(in: .whitespaces).isEmpty)
+        }
+    }
+
+    private func addDraft() {
+        model.addAlias(forPattern: draft)
+        draft = ""
+    }
+}
+
+/// One alias row. The names field edits a local draft and commits on Return or when it
+/// loses focus, so a comma being typed isn't normalised away mid-keystroke.
+private struct AliasRow: View {
+    @ObservedObject var model: SettingsModel
+    let alias: AppAlias
+    @State private var text: String = ""
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(model.displayName(forPattern: alias.pattern))
+                    .lineLimit(1)
+                if model.isBundleIdentifierPattern(alias.pattern) {
+                    Text(alias.pattern).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                }
+            }
+            .frame(width: 180, alignment: .leading)
+            TextField("aliases, comma-separated", text: $text)
+                .textFieldStyle(.roundedBorder)
+                .focused($focused)
+                .onSubmit { commit() }
+                .onChange(of: focused) { _, isFocused in
+                    if !isFocused { commit() }
+                }
+            Button(role: .destructive) { model.removeAlias(withPattern: alias.pattern) } label: { Image(systemName: "minus.circle") }
+                .help("Remove")
+        }
+        .buttonStyle(.borderless)
+        .padding(.vertical, 2)
+        .onAppear { text = alias.names.joined(separator: ", ") }
+    }
+
+    private func commit() {
+        model.setAliasNames(forPattern: alias.pattern, from: text)
     }
 }
 
@@ -446,6 +568,7 @@ final class SettingsWindowController {
         let tabs = SettingsTabViewController()
         tabs.addTabViewItem(makeTab("General", symbol: "gearshape", view: GeneralPane(model: model)))
         tabs.addTabViewItem(makeTab("Matching", symbol: "textformat.abc", view: MatchingPane(model: model)))
+        tabs.addTabViewItem(makeTab("Priorities", symbol: "list.number", view: PrioritiesPane(model: model)))
         tabs.addTabViewItem(makeTab("Appearance", symbol: "paintpalette", view: AppearancePane(model: model)))
         tabs.addTabViewItem(makeTab("Exclusions", symbol: "eye.slash", view: ExclusionsPane(model: model)))
 

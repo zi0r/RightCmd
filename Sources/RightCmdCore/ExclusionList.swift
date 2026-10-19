@@ -59,13 +59,9 @@ public struct ExclusionList: Equatable, Sendable {
 
     public static let empty = ExclusionList(patterns: [])
 
-    /// True if the candidate's name or bundle identifier matches any pattern.
+    /// True if any of the candidate's names or its bundle identifier matches any pattern.
     public func excludes(_ candidate: AppCandidate) -> Bool {
-        for pattern in patterns {
-            if pattern.matches(candidate.name) { return true }
-            if let bundle = candidate.bundleIdentifier, pattern.matches(bundle) { return true }
-        }
-        return false
+        patterns.contains { $0.matches(candidate) }
     }
 
     public func filter(_ candidates: [AppCandidate]) -> [AppCandidate] {
