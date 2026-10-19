@@ -39,7 +39,7 @@ cask "rightcmd" do
 
   url "https://github.com/$REPO/releases/download/${TAG_PREFIX}#{version}/RightCmd-#{version}.zip"
   name "RightCmd"
-  desc "Hold right ⌘ and type the first letters of an app to switch to it"
+  desc "Switch apps by holding the right Command key and typing the first letters"
   homepage "https://github.com/$REPO"
 
   livecheck do
@@ -72,8 +72,12 @@ echo "wrote $OUT (version $VERSION, sha256 $SHA)"
 
 if [[ -n "${TAP:-}" ]]; then
     # TAP is "owner/name"; Homebrew stores it at .../Taps/owner/homebrew-name.
+    # Accept both spellings: "zi0r/tap" (Homebrew's tap name) and "zi0r/homebrew-tap" (the
+    # repository name). Homebrew's own name drops the "homebrew-" prefix.
     OWNER="${TAP%%/*}"
     NAME="${TAP##*/}"
+    NAME="${NAME#homebrew-}"
+    TAP="$OWNER/$NAME"
     TAP_DIR="$(brew --repository)/Library/Taps/$OWNER/homebrew-$NAME"
     if [[ ! -d "$TAP_DIR" ]]; then
         echo "==> Creating local tap $TAP"
